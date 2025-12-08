@@ -172,7 +172,7 @@ Item {
                 iconColor: "#E3B341"
                 text: "关于我"
                 onClicked: {
-                        Qt.openUrlExternally("https://github.com/sudoevolve")  // 替换为你想跳转的网址
+                        Qt.openUrlExternally("https://github.com/TOBugCoding/WeAsmr")  // 替换为你想跳转的网址
                     }
             }
         }
