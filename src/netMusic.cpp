@@ -73,12 +73,11 @@ void NetMusic::net_search_list(QNetworkReply* reply) {
             }
         }
     }
-
     emit asmrSearchReceived(nameList);
     qDebug() << "\n[搜索结果] 共" << nameList.size() << "个：";
-    for (int i = 0; i < nameList.size(); ++i) {
-        qDebug() << QString("%1. %2").arg(i + 1).arg(nameList[i].name);
-    }
+    // for (int i = 0; i < nameList.size(); ++i) {
+    //     qDebug() << QString("%1. %2").arg(i + 1).arg(nameList[i].name);
+    // }
 
     reply->deleteLater();
 
@@ -151,12 +150,11 @@ void NetMusic::net_asmr_list(QNetworkReply* reply) {
             }
         }
     }
-
     emit asmrNamesReceived(nameList);
     qDebug() << "\n[最终提取的所有 name] 共" << nameList.size() << "个：";
-    for (int i = 0; i < nameList.size(); ++i) {
-        qDebug() << QString("%1. %2").arg(i + 1).arg(nameList[i].name);
-    }
+    // for (int i = 0; i < nameList.size(); ++i) {
+    //     qDebug() << QString("%1. %2").arg(i + 1).arg(nameList[i].name);
+    // }
 
     reply->deleteLater();
 }
@@ -373,6 +371,9 @@ void NetMusic::load_audio(QString path)
     }
 
     // 6. 发送加载完成信号（无论是否找到，都发送列表，空列表表示无数据）
+    audioList.sort();
+    collect_audio_list=audioList;
+    //qDebug()<<"列表"<<collect_audio_list;
     emit collectCompelet(audioList);
 }
 
@@ -620,4 +621,56 @@ bool NetMusic::delete_collection(QString folderName)
     qInfo() << "[删除收藏夹] 成功：收藏夹" << folderName << "已删除，剩余收藏夹数量：" << collectionArray.size();
     emit collectChanged();
     return true;
+}
+
+//void NetMusic::net_test(const QString keyword) {
+//    QUrl url("");
+//    QNetworkRequest request(url);
+//    //立即返回结果，等待信号返回
+//    QNetworkReply* reply = m_netManager->get(request);
+//    //所以reply指向的内存没有销毁，而是nettest指向完毕后reply这个指针会销毁，所以要用赋值，也可以用=来赋值这个指针，但这个过程中没有复制指针指向的资源？
+//    connect(reply, QNetworkReply::finished, this, [=]() {onTestReplyFinished(reply); });
+//}
+// lambda为每个连接都建立一对一的值返回
+//void NetMusic::onTestReplyFinished(QNetworkReply* reply) {
+//    QByteArray responseData = reply->readAll();
+//    qDebug() << responseData;
+//    reply->deleteLater();
+//}
+
+//收藏夹列表的顺序播放
+QString NetMusic::get_audioName(){
+    if(collect_audio_list.length()==0){
+        qDebug()<<"播放列表为空";
+        return "";
+    }
+    QString audioName=get_current_playing();
+    qDebug()<<"当前播放"<<audioName;
+    bool canReturn=false;
+    for(QString& child:collect_audio_list){
+        if(canReturn){
+            qDebug()<<"下一首播放"<<child;
+            set_current_playing(child);
+            return child;
+        }
+        if(child.contains(audioName)){
+            canReturn=true;
+        }
+
+    }
+    qDebug()<<"下一首播放"<<collect_audio_list[0];
+    set_current_playing(collect_audio_list[0]);
+    return collect_audio_list[0];
+
+}
+
+void NetMusic::set_current_playing(QString path){
+    if(current_playing!=path){
+        current_playing=path;
+        emit current_playing_changed();
+    }
+}
+
+QString NetMusic::get_current_playing(){
+    return current_playing;
 }

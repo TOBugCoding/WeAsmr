@@ -34,6 +34,9 @@ public:
    
     explicit NetMusic(QObject* parent = nullptr);
     ~NetMusic();
+    //多接口调用测试
+    //Q_INVOKABLE void net_test(const QString keyword);
+    //搜索列表
     Q_INVOKABLE void search_list(const QString keyword);
     //请求播放列表
     Q_INVOKABLE void asmr_list(const QString& path,bool needAdd=true);
@@ -59,6 +62,11 @@ public:
     Q_INVOKABLE bool add_collection(QString folderName);
     //删除收藏夹
     Q_INVOKABLE bool delete_collection(QString folderName);
+    //返回下一个音频路径
+    Q_INVOKABLE QString get_audioName();
+    //音频名称的 get set
+    Q_INVOKABLE QString get_current_playing(); Q_INVOKABLE void set_current_playing(QString path);
+
     enum netType
     {
         asmr_list_type, search_list_type
@@ -79,16 +87,26 @@ signals:
     //监听收藏夹变更，这2个信号作用是一样的，暂且不管
     void collectChanged();
     void collect_file_changed();
+    //当前播放的音频更改
+    void current_playing_changed();
+
 
 private slots:
     //统一返回接口
     void onReplyFinished(QNetworkReply* reply);
+    //void onTestReplyFinished(QNetworkReply* reply);
 private:
     //检测收藏夹是否存在
     bool isCollectionExist(const QString& folderName, const QJsonArray& collectionArray);
     QNetworkAccessManager* m_netManager;
     QNetworkReply* m_currentReply;
     QNetworkReply* m_preReply;
+
+    //保存播放列表，实现循环播放
+    //QList<AsmrItem> audio_list;
+    //保存收藏列表的播放列表，实现循环播放
+    QList<QString> collect_audio_list;
+    QString current_playing;//记录当前正在播放的音频
     QString current_url=""; // 记录完整文件夹路径 不含音频名称
     int current_page=1; //当前的页数
     int total_page=0;
@@ -102,4 +120,6 @@ private:
     void net_asmr_list(QNetworkReply* m_currentReply);
     //search_list网络回调
     void net_search_list(QNetworkReply* m_currentReply);
+
+
 };

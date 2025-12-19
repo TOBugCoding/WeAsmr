@@ -9,7 +9,7 @@ import "../"
 import "../components"
 Item {
     opacity:0
-    id: collectPage
+    id: searchtPage
     property string currentPlaying: ""
     // 连接加载完成信号
     Connections {
@@ -29,6 +29,9 @@ Item {
         function onPageChanged(page){
             //无论是重复搜索还是不是，都重新加载
             audioListModel.clear();
+        }
+        function onCurrent_playing_changed(){
+            collectPage.currentPlaying=ASMRPlayer.get_current_playing();
         }
     }
     SelectCollect{
@@ -87,12 +90,13 @@ Item {
                                 let playUrl = "https://mooncdn.asmrmoon.com" + model.audioPath + 
                                                 "?sign=J6Pg2iI3DmhltIzETpxWUM13oVCCHYw6jHEtlrFKWOE=:0";
                                 console.log(playUrl)
-                                if(currentPlaying != model.audioPath){
+                                if(currentPlaying !== model.audioPath){
                                     leftbar.child.exposedMediaPlayer.stop()
                                     leftbar.child.exposedMediaPlayer.source = playUrl
                                     leftbar.child.exposedMediaPlayer.play()
                                 }
-                                currentPlaying = model.audioPath
+                                currentPlaying = model.audioPath.substring(1)
+                                ASMRPlayer.set_current_playing(currentPlaying);
                             }
                             // 悬停进入：启动放大动画
                             onEntered: {
@@ -162,7 +166,7 @@ Item {
                                 Text {
                                     text: model.audioPath
                                     font.pixelSize: 16
-                                    color: currentPlaying == model.audioPath ? theme.green : theme.fontColor
+                                    color: ("/"+currentPlaying) === model.audioPath ? theme.green : theme.fontColor
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignVCenter
@@ -191,6 +195,7 @@ Item {
     }
 
     Component.onCompleted: {
+        currentPlaying=ASMRPlayer.get_current_playing()
         loadingOverlay.visible = (audioListModel.count === 0);
     }
 }

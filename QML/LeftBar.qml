@@ -17,16 +17,16 @@ Item{
 			{btnText:"ASMR",btnIcon:"qrc:/sources/image/我喜欢的.svg",qml:"qrc:/QML/content/Asmr_list.qml",isActive:true},
 			{btnText:"关于我",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/Aboutme.qml",isActive:true},
 			],isActive:true,addAble:false},
-		{headerText:"我的音乐",btnData:[
-			{btnText:"音乐组件",btnIcon:"qrc:/sources/image/我喜欢的.svg",qml:"qrc:/QML/content/Music.qml",isActive:true},
-			{btnText:"转中文",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/NumberToChinese.qml",isActive:true},
-            {btnText:"tcp学习",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/TcpStudy.qml",isActive:true},
-			{btnText:"基础组件",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/BaseShow.qml",isActive:true},
-			],isActive:false,addAble:false},
+		{headerText:"测试模块",btnData:[
+			{btnText:"学习",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/Study.qml",isActive:true},
+			{btnText:"转中文",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/NumberToChinese.qml",isActive:false},
+            {btnText:"tcp学习",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/TcpStudy.qml",isActive:false},
+			{btnText:"基础组件",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/BaseShow.qml",isActive:false},
+            ],isActive:false,addAble:false},
 		{headerText:"收藏列表",btnData:[],isActive:true,addAble:true},
 		]
-	property var current_list_view:""//记录当前选择的选项
-	property var collect_add_message:""//记录哪个收藏夹多了内容
+    property string current_list_view:""//记录当前选择的选项
+    property string collect_add_message:""//记录哪个收藏夹多了内容
 	property bool isCreatingCollection: false
 	function filterLeftBarData(leftBarData) {
 		return leftBarData
@@ -70,7 +70,7 @@ Item{
 	property var thisData: filterLeftBarData(leftBarData)
 	property var child: bot_player
 	property var left_btn_list:left_btn_list
-	property string thisQml:"qrc:/QML/content/Asmr_list.qml"
+    property string thisQml:"qrc:/QML/content/Asmr_list.qml"
 	property string thisBtnText:""
 	property int count:thisData.length
 	property int btnHeight:40
@@ -122,7 +122,7 @@ Item{
 					contentHeight: leftColumn.implicitHeight
 					boundsBehavior: Flickable.StopAtBounds
 					clip: true
-                    acceptedButtons:Qt.NoButton
+                    //acceptedButtons:Qt.NoButton
 					leftMargin:30
 					ScrollBar.vertical:ScrollBar{
 						id:ver_bar
@@ -186,7 +186,7 @@ Item{
 											Layout.fillWidth: true 
 											font.pointSize:leftBar.fontSize
 											text:modelData.headerText
-											height:modelData.headerText==""?0:contentHeight
+                                            height:modelData.headerText===""?0:contentHeight
 											color:theme.samllTitleColor
 											MouseArea {
 												anchors.fill: parent
@@ -292,7 +292,7 @@ Item{
 							property bool isHoverd:false
 							width:leftBar.btnWidth
 							height:leftBar.btnHeight
-							color:leftBar.current_list_view==modelData.btnText?theme.globalColor:(isHoverd?theme.globalColor:"transparent")
+                            color:leftBar.current_list_view===modelData.btnText?theme.globalColor:(isHoverd?theme.globalColor:"transparent")
 							opacity:theme.opacity
 							radius:10
 						
@@ -328,7 +328,7 @@ Item{
 										return rawText;
 									}
 								}
-								Text{text:"●";color:"red";font.pointSize:leftBar.collect_fonts;visible:leftBar.collect_add_message==modelData.btnText}
+                                Text{text:"●";color:"red";font.pointSize:leftBar.collect_fonts;visible:leftBar.collect_add_message===modelData.btnText}
 							}
 							MouseArea{
 								id: mouseArea
@@ -337,17 +337,17 @@ Item{
 								onEntered:{parent.isHoverd=true;mouseArea.cursorShape = Qt.PointingHandCursor;}
 								onExited:{parent.isHoverd=false;mouseArea.cursorShape = Qt.ArrowCursor;}
 								onClicked:{
-									if(leftBar.collect_add_message==modelData.btnText){
+                                    if(leftBar.collect_add_message===modelData.btnText){
 										leftBar.collect_add_message=""
 									}
 									leftBar.current_list_view=modelData.btnText
 									parent.forceActiveFocus()
-									ASMRPlayer.set_collect_file(modelData.btnText)
-									if(leftBar.thisQml!=modelData.qml){
+                                    if(modelData.addAble)ASMRPlayer.set_collect_file(modelData.btnText)
+                                    if(leftBar.thisQml!==modelData.qml){
 										leftBar.thisQml=modelData.qml
 										topbar.history.push(modelData.qml)
 										topbar.now_pos++
-										console.log("添加成功",topbar.history,topbar.now_pos)
+                                        //console.log("添加成功",topbar.history,topbar.now_pos)
 									}
 								}
 							}

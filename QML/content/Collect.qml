@@ -26,11 +26,14 @@ Item {
                     name: audioList[i].split("/").pop()
                 });
             }
-            console.log("收藏夹加载完成，共" + audioList.length + "首音频");
+            //console.log("收藏夹加载完成，共" + audioList.length + "首音频");
         }
         function onCollect_file_changed(){collectPage.currentCollectFile=ASMRPlayer.get_collect_file()}
+        function onCurrent_playing_changed(){
+            collectPage.currentPlaying=ASMRPlayer.get_current_playing();
+        }
     }
-    
+
     MessageBox {
         id: collectDetail
         set_flag:0+1
@@ -61,6 +64,19 @@ Item {
                         collectDetail.text="默认收藏夹不能删除"
                     }
                     collectDetail.open()
+                }
+                //播放下一首音频
+                function next_audio_play(){
+                    let path=ASMRPlayer.get_audioName()
+                    let playUrl = "https://mooncdn.asmrmoon.com" + "/" + path +
+                                    "?sign=J6Pg2iI3DmhltIzETpxWUM13oVCCHYw6jHEtlrFKWOE=:0";
+                    console.log(playUrl)
+                    if(path!==""){
+                        leftbar.child.exposedMediaPlayer.stop()
+                        leftbar.child.exposedMediaPlayer.source = ""
+                        leftbar.child.exposedMediaPlayer.source = playUrl
+                        leftbar.child.exposedMediaPlayer.play()
+                    }
                 }
             }
             
@@ -104,6 +120,7 @@ Item {
                     Item {
                         anchors.fill: parent
                         // 鼠标区域覆盖整个缩放容器
+
                         MouseArea {
                             anchors.fill: parent
                             hoverEnabled: true
@@ -117,12 +134,13 @@ Item {
                                 let playUrl = "https://mooncdn.asmrmoon.com" + "/" + model.audioPath + 
                                                 "?sign=J6Pg2iI3DmhltIzETpxWUM13oVCCHYw6jHEtlrFKWOE=:0";
                                 console.log(playUrl)
-                                if(currentPlaying != model.name){
+                                if(currentPlaying !== model.name){
                                     leftbar.child.exposedMediaPlayer.stop()
                                     leftbar.child.exposedMediaPlayer.source = playUrl
                                     leftbar.child.exposedMediaPlayer.play()
                                 }
-                                currentPlaying = model.name
+                                currentPlaying = model.audioPath
+                                ASMRPlayer.set_current_playing(collectPage.currentPlaying);
                             }
                             // 悬停进入：启动放大动画
                             onEntered: {
@@ -174,7 +192,7 @@ Item {
                                 Text {
                                     text: model.audioPath
                                     font.pixelSize: 16
-                                    color: currentPlaying == model.name ? theme.green : theme.fontColor
+                                    color: currentPlaying == model.model.audioPath ? theme.green : theme.fontColor
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignVCenter
@@ -203,6 +221,7 @@ Item {
     }
 
     Component.onCompleted: {
+        collectPage.currentPlaying=ASMRPlayer.get_current_playing()
         ASMRPlayer.load_audio(ASMRPlayer.get_collect_file());
         loadingOverlay.visible = (audioListModel.count === 0);
     }

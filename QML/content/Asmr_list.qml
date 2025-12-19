@@ -13,7 +13,7 @@ Item {
     id: asmr_list_body
     opacity: 0
     property string currentPlaying: ""
-    property var file: ""
+    property string file: ""
     property int page:1//当前页数
     property int totalpage:1//总页数
     property var pathParts
@@ -43,6 +43,9 @@ Item {
         function onTotalPageChanged(_page){
             asmr_list_body.totalpage=_page
         }
+        function onCurrent_playing_changed(){
+            asmr_list_body.currentPlaying=ASMRPlayer.get_current_playing();
+        }
     }
     SelectCollect{
         id:selectCollect
@@ -64,7 +67,7 @@ Item {
             spacing: 2
             //重复组件
             Repeater {
-                model: pathParts.length
+                model: pathParts?.length ?? 0
                 delegate: row_title
             }
         }
@@ -194,23 +197,24 @@ Item {
                             onClicked: {
                                 if(model.is_dir){
                                     file = ASMRPlayer.get_path() + model.name + "/";
-                                    ASMRPlayer.asmr_list(ASMRPlayer.get_path() + model.name, true);
-                                    ASMRPlayer.set_page(1);
-                                    //切换目录时清空当前ui显示
-                                    listModel.clear();
+                                    let next_path=ASMRPlayer.get_path() + model.name;
+                                    ASMRPlayer.set_page(1);//set_page会自动刷新
+                                    ASMRPlayer.asmr_list(next_path, true);
                                     return;
                                 }
                                 //检测到音频开始播放
                                 let playUrl = "https://mooncdn.asmrmoon.com" + "/" + ASMRPlayer.get_path() +
                                                 encodeURIComponent(model.name) + 
                                                 "?sign=J6Pg2iI3DmhltIzETpxWUM13oVCCHYw6jHEtlrFKWOE=:0";
-                                console.log(playUrl)
-                                if(currentPlaying != model.name){
+                                console.log("对照"+ASMRPlayer.get_path()+model.name)
+                                if(currentPlaying !== model.name){
                                     leftbar.child.exposedMediaPlayer.stop()
+                                    leftbar.child.exposedMediaPlayer.source = ""
                                     leftbar.child.exposedMediaPlayer.source = playUrl
                                     leftbar.child.exposedMediaPlayer.play()
                                 }
-                                currentPlaying = model.name
+                                currentPlaying = ASMRPlayer.get_path()+model.name
+                                ASMRPlayer.set_current_playing(currentPlaying)
                             }
                             // 悬停进入：启动放大动画
                             onEntered: {
@@ -280,7 +284,7 @@ Item {
                                 Text {
                                     text: model.name
                                     font.pixelSize: 16
-                                    color: currentPlaying == model.name ? theme.green : theme.fontColor
+                                    color: currentPlaying === ASMRPlayer.get_path()+model.name ? theme.green : theme.fontColor
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignVCenter
@@ -322,6 +326,8 @@ Item {
     Component.onCompleted: {
         listModel.clear();
         file = ASMRPlayer.get_path()
+        currentPlaying=ASMRPlayer.get_current_playing()
+        console.log("现在播放"+currentPlaying)
         ASMRPlayer.asmr_list(file, false)
         loadingOverlay.visible = (listModel.count === 0);
     }

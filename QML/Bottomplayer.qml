@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtMultimedia
 import QtQuick.Layouts
+import com.asmr.player 1.0
 import "control"
 //底部播放器，保证切换页面也不会打断asmr的播放
 Item{
@@ -153,6 +154,7 @@ Item{
             mediaError.text = mediaPlayer.errorString
             //mediaError.open()//音频出错的提示，暂时关闭
         }
+
         //! [4]
         onMetaDataChanged: { updateMetadata() }
         //! [6]
@@ -165,11 +167,64 @@ Item{
         }
         onPlaybackStateChanged:{
             if (mediaPlayer.playbackState === MediaPlayer.PlayingState) {
-                const pos = Math.min(mediaPlayer.duration,mediaPlayer.position + 10)
-                mediaPlayer.setPosition(pos)
+                //const pos = mediaPlayer.position//Math.min(mediaPlayer.duration,mediaPlayer.position + 10)
+                //mediaPlayer.setPosition(pos)
+                console.log("状态为Playing")
             }
+            if(mediaPlayer.playbackState === MediaPlayer.PausedState){
+                console.log("状态为Paused")
+            }
+
         }   
-        //! [6]
-        //source: new URL("https://download.qt.io/learning/videos/media-player-example/Qt_LogoMergeEffect.mp4")
+        onMediaStatusChanged: {
+            //console.log(mediaPlayer.mediaStatus)
+            // 0 无媒体	未设置媒体。
+            // 1 正在加载媒体	当前正在加载媒体。
+            // 2 已加载媒体	媒体已加载。
+            // 3 缓冲媒体	媒体正在缓冲数据。
+            // 4 停滞媒体	媒体正在缓冲数据时播放被中断。
+            // 5 缓冲媒体	媒体正在缓冲数据。   5就是可以播放了
+            // 6 媒体结束	媒体已播放结束。
+            // 7 无效媒体	媒体无法播放。
+            if(mediaPlayer.mediaStatus===2){
+                const pos = mediaPlayer.position
+                //console.log(ASMRPlayer.get_current_playing());
+                //mediaPlayer.setPosition(pos)
+            }
+            //自动播放下一个
+            if(mediaPlayer.mediaStatus===6){
+                next_audio_play();
+            }
+            //7为媒体无法播放，可以选择再次加载或者播放下一个
+            if(mediaPlayer.mediaStatus===7){
+                reload_audio();
+            }
+        }
+        onBufferProgressChanged: {
+            console.log("缓存进度"+mediaPlayer.bufferProgress)
+        }
+    }
+    function next_audio_play(){
+        let path=ASMRPlayer.get_audioName()
+        let playUrl = "https://mooncdn.asmrmoon.com" + "/" + path +
+                        "?sign=J6Pg2iI3DmhltIzETpxWUM13oVCCHYw6jHEtlrFKWOE=:0";
+        console.log("设置下一个播放源"+playUrl)
+        if(path!==""){
+             //设置下一个播放源
+            mediaPlayer.stop()
+            mediaPlayer.source = ""
+            mediaPlayer.source = playUrl
+            mediaPlayer.play()
+        }
+    }
+    function reload_audio(){
+        let path = ASMRPlayer.get_current_playing()
+        let playUrl = "https://mooncdn.asmrmoon.com" + "/" + path +
+                        "?sign=J6Pg2iI3DmhltIzETpxWUM13oVCCHYw6jHEtlrFKWOE=:0";
+        console.log("播放失败重新加载"+playUrl)
+        mediaPlayer.stop()
+        mediaPlayer.source = ""
+        mediaPlayer.source = playUrl
+        mediaPlayer.play()
     }
 }

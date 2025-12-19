@@ -241,7 +241,7 @@ Item {
                     HoverButton{
                         id:mini_btn
                         image_path:"qrc:/sources/image/icon_minimize.svg"
-                        onEntered:{if(!root.can_minize){console.log("进入");pre_minitxt.forceActiveFocus();}}
+                        onEntered:{if(!root.can_minize){pre_minitxt.forceActiveFocus();}}
                         onClicked:{root.targetwindow.showMinimized();}
                         TextInput{
                             opacity:0
@@ -259,7 +259,7 @@ Item {
                                 if (activeFocus) {
                                     root.targetwindow.showMinimized();
                                     root.can_minize=true
-                                    console.log("第一次点击")
+                                    //console.log("第一次点击")
                                     focus=false
                                     mini_text.visible=false
                                 }

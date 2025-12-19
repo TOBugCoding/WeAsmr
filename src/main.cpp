@@ -1,44 +1,46 @@
-#include <QGuiApplication>
+ï»¿#include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
 #include <QQmlContext> 
 #include "fpscounter.h"
-#include "music.h"
 #include "CursorPosProvider.h"
-#include "NumberToChinese.h"
-#include "DataMgr.h"
-#include "TcpClient.h"
 #include "netMusic.h"
-#include "PageMgr.h"
+//#include "logger.h"
+//#include "NumberToChinese.h"
+//#include "TcpClient.h"
+//#include "PageMgr.h"
 int main(int argc, char* argv[])
 {
+    //logger log;
+
+
     QGuiApplication app(argc, argv);
     app.setWindowIcon(QIcon(":/fonts/icon.ico"));
 
-    qmlRegisterType<AudioMetadata>("AudioMetadata", 1, 0, "AudioMetadata");
-    qmlRegisterType<MusicLibrary>("MusicLibrary", 1, 0, "MusicLibrary");
     qmlRegisterType<FpsCounter>("FpsCounter", 1, 0, "FpsCounter");
-    qmlRegisterType<NumberToChinese>("Number", 1, 0, "NumberToChinese");
-    qmlRegisterType<TcpClient>("TcpClient", 1, 0, "TcpClient");
+    //qmlRegisterType<NumberToChinese>("Number", 1, 0, "NumberToChinese");
+    //qmlRegisterType<TcpClient>("TcpClient", 1, 0, "TcpClient");
     //qmlRegisterType<NetMusic>("NetMusic", 1, 0, "NetMusic");
-    //×¢²áµ¥Àı£¬È«¾Öµ÷ÓÃ£¬±ÜÃâÉî¶È¹ıÉîµ¼ÖÂ·ÃÎÊ²»µ½
+    //æ³¨å†Œå•ä¾‹ï¼Œå…¨å±€è°ƒç”¨ï¼Œé¿å…æ·±åº¦è¿‡æ·±å¯¼è‡´è®¿é—®ä¸åˆ°
     NetMusic asmr_player;
     qmlRegisterSingletonInstance<NetMusic>(
-        "com.asmr.player",  // Ä£¿éÃû
-        1, 0,               // °æ±¾ºÅ
-        "ASMRPlayer",       // QML ÖĞ·ÃÎÊµÄÃû³Æ
-        &asmr_player        // ÊµÀıÖ¸Õë
+        "com.asmr.player",  // æ¨¡å—å
+        1, 0,               // ç‰ˆæœ¬å·
+        "ASMRPlayer",       // QML ä¸­è®¿é—®çš„åç§°
+        &asmr_player        // å®ä¾‹æŒ‡é’ˆ
     );
-    qmlRegisterType<PageMgr>("PageMgr", 1, 0, "PageMgr");
+    //qmlRegisterType<PageMgr>("PageMgr", 1, 0, "PageMgr");
     QQmlApplicationEngine engine;
     CursorPosProvider mousePosProvider;
-    DataMgr dataMgr;
+    
     engine.rootContext()->setContextProperty("mousePosition", &mousePosProvider);
-    engine.rootContext()->setContextProperty("dataMgr", &dataMgr);
-    engine.load(QUrl("qrc:/QML/main.qml"));   // ¹Ø¼ü£ºqrc Â·¾¶
-    QObject* rootObject = engine.rootObjects().first();
-    if (engine.rootObjects().isEmpty())
-        return -1;
+    QUrl url(QString("qrc:/QML/main.qml"));
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
+                     &app, [url](QObject *obj, const QUrl &objUrl) {
+                         if (!obj && url == objUrl)
+                             QCoreApplication::exit(-1); // åŠ è½½å¤±è´¥æ—¶é€€å‡º
+                     }, Qt::QueuedConnection);
+    engine.load(url);
 
     return app.exec();
 }

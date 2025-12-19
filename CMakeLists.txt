@@ -1,53 +1,70 @@
-cmake_minimum_required(VERSION 3.16)
+ï»¿cmake_minimum_required(VERSION 3.16)
 
 project(QtQuickDemo VERSION 0.1 LANGUAGES CXX)
 
-# ´ò¿ª Qt ±ØĞèµÄ×Ô¶¯´¦Àí
-set(CMAKE_AUTOMOC ON)      # ÈÃ moc ×Ô¶¯ÅÜ
-set(CMAKE_AUTORCC ON)      # ÈÃ rcc ×Ô¶¯ÅÜ
+# Qtè‡ªåŠ¨å¤„ç†MOC/RCCï¼ˆç¦ç”¨AUTOUICï¼Œå› ä¸ºæ˜¯Qt Quickï¼‰
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC OFF)
+
+# C++æ ‡å‡†
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ---------- FFmpeg ----------
-set(FFMPEG_ROOT "D:/c++packages/ffmpeg-7.1.1-full_build-shared")
-find_path(FFMPEG_INCLUDE_DIR
-    NAMES libavformat/avformat.h
-    PATHS "${FFMPEG_ROOT}/include"
-    NO_DEFAULT_PATH
+# ä¼˜å…ˆæœç´¢å½“å‰ç›®å½•ï¼ˆé€‚é…MOC/UIç”Ÿæˆæ–‡ä»¶ï¼‰
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+# æŸ¥æ‰¾Qt6æ¨¡å—ï¼ˆä¿®æ­£networkä¸ºNetworkï¼‰
+find_package(Qt6 6.8 REQUIRED COMPONENTS
+    Core
+    Gui
+    Qml
+    Quick
+    Multimedia
+    Network
 )
-set(FFMPEG_LIB_DIR     "${FFMPEG_ROOT}/lib")
-link_directories(${FFMPEG_LIB_DIR})
-# ÕÒ Qt6×é¼ş
-find_package(Qt6 6.9 REQUIRED COMPONENTS Core Gui Qml Quick Multimedia network)
 
-# °ÑÔ´ÎÄ¼şÒ»´ÎĞÔÊÕ½øÀ´
-file(GLOB_RECURSE SRC_FILES
-     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-     ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h)   # Í·ÎÄ¼şÒ²ÁĞ½øÀ´£¬moc »áÉ¨Ãè
-# °Ñ qrc ¼Ó½øÈ¥
-qt6_add_resources(SRC_FILES qml.qrc)
+# æ‹†åˆ†æºæ–‡ä»¶/å¤´æ–‡ä»¶ï¼ˆæ›´æ¸…æ™°ï¼‰
+set(SRC_FILES
+    src/main.cpp
+    src/netMusic.cpp
+    src/fpscounter.cpp
+    #src/logger.cpp
+    qml.qrc  # èµ„æºæ–‡ä»¶å½’ç±»åˆ°æºæ–‡ä»¶
+)
 
-# Éú³É¿ÉÖ´ĞĞÎÄ¼ş
- qt_add_executable(QtQuickDemo WIN32 ${SRC_FILES})
+set(HEADER_FILES
+    include/netMusic.h
+    include/fpscounter.h
+    include/CursorPosProvider.h
+    #include/logger.h
+)
 
-#µ¼³ö
-#qt_add_executable(QtQuickDemo  ${SRC_FILES})
-# °üº¬Ä¿Â¼
+# ç”Ÿæˆå¯æ‰§è¡Œæ–‡ä»¶ï¼ˆWIN32ç”¨äºWindowséšè—æ§åˆ¶å°ï¼‰
+qt6_add_executable(QtQuickDemo WIN32
+    ${SRC_FILES}
+    ${HEADER_FILES}  # ä»…ç”¨äºIDEæ˜¾ç¤º
+)
+
+# æŒ‡å®šå¤´æ–‡ä»¶æœç´¢è·¯å¾„ï¼ˆç°ä»£å†™æ³•ï¼Œæ¨èï¼‰
 target_include_directories(QtQuickDemo
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${FFMPEG_INCLUDE_DIR}
-)
-# Á´½Ó¿â
-target_link_libraries(QtQuickDemo PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Multimedia Qt6::Network
-    ${FFMPEG_LIB}
-    avdevice.lib
-    avformat.lib
-    avcodec.lib
-    avutil.lib
-    swscale.lib
-    swresample.lib
-    avfilter.lib
 )
 
+# é“¾æ¥Qtåº“
+target_link_libraries(QtQuickDemo PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Qml
+    Qt6::Quick
+    Qt6::Multimedia
+    Qt6::Network
+)
 
+# å¯é€‰ï¼šå®‰è£…è§„åˆ™ï¼ˆå¦‚æœéœ€è¦æ‰“åŒ…å‘å¸ƒï¼‰
+# install(TARGETS QtQuickDemo
+#     BUNDLE DESTINATION .
+#     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+# )

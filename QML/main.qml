@@ -4,7 +4,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtMultimedia
 import FpsCounter
-import PageMgr 1.0
+
 import "components" as Components
 ApplicationWindow {
     id:mainWindow
@@ -14,19 +14,17 @@ ApplicationWindow {
     //flags:Qt.Window|Qt.FramelessWindowHint|Qt.WindowStaysOnTopHint
     flags:Qt.Window|Qt.FramelessWindowHint
     //管理大小位置的重现
-    property var now_width:1080
-    property var now_height:600
+    property int now_width:1080
+    property int now_height:600
     property var prev_pos:Qt.vector2d(0,0)
-    property var prev_width:now_width
-    property var prev_height:now_height
-    property var state:-1
+    property int prev_width:now_width
+    property int prev_height:now_height
+    property int state:-1
     title: ""
     color:"#00000000" //比设置background更高效，并且最好不用transparent，否则要加上Qt.WA_TranslucentBackground
     //background:Rectangle{color:"#00000000"}
-    //音频组件 现在改为cpp全局单例注册
-	//NetMusic {id: asmr_player}
+
     //页面缓存管理
-    //PageMgr{id:pageMgr}
     FontLoader {
         id: iconFont
         source: "qrc:/fonts/fontawesome-free-6.7.2-desktop/otfs/Font Awesome 6 Free-Solid-900.otf"
@@ -90,7 +88,7 @@ ApplicationWindow {
         anchors.right:parent.right
         targetwindow: mainWindow
         z:1 //设置层级，让顶部超出的部分可以在leftbar里显示
-        property var fullscreen:false
+        property bool fullscreen:false
         onFullscreenChanged:{
             if(fullscreen){
                 leftbar.anchors.top=topbar.anchors.top;leftbar.left_btn_list.visible=false
@@ -139,9 +137,12 @@ ApplicationWindow {
     }
     onVisibilityChanged:function(state){
         //初始显示位置跳过调整
-        if(mainWindow.state==-1){mainWindow.state=state;return}
+        if(mainWindow.state===-1){
+            mainWindow.state=state;
+            return;
+        }
         //最小化后每次显示进行调整
-        if(state==2){
+        if(state===2){
             mainWindow.width=prev_width
             mainWindow.height=prev_height
             mainWindow.x=prev_pos.x;mainWindow.y=prev_pos.y
