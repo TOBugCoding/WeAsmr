@@ -258,6 +258,8 @@ Item {
                                 id:dowloadShow
                                 property real dowloadprogress: listItem.downloadProgress
                                 color: "#826858"
+                                opacity:0.8
+                                radius: 4
                                 anchors.left:parent.left
                                 anchors.top:parent.top
                                 anchors.bottom: parent.bottom

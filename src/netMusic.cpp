@@ -779,6 +779,7 @@ QString NetMusic::get_audioName(){
         }
 
     }
+    //从头开始播放
     qDebug()<<"下一首播放"<<collect_audio_list[0];
     set_current_playing(collect_audio_list[0]);
     return collect_audio_list[0];

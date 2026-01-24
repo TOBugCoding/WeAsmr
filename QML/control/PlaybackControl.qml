@@ -1,6 +1,6 @@
 ﻿// Copyright (C) 2024 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
-
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -32,10 +32,14 @@ Item {
     implicitHeight: 100 // 原 168/208 → 大幅压缩，适合底部常驻
     property int bottomplayerHeight:100
     Behavior on opacity { NumberAnimation { duration: 300 } }
-
+    //教程https://runebook.dev/zh/docs/qt/qml-qtquick-dialogs-folderdialog/currentFolder
     FileDialog {
         id: fileDialog
-        title: "Please choose a file"
+        title: "选择要加载的音频资源"
+        currentFolder:"file:///"+appDir+"/download"
+        Component.onCompleted: {
+            console.log(appDir)
+        }
         onAccepted: {
             playbackController.mediaPlayer.stop()
             playbackController.mediaPlayer.source = fileDialog.selectedFile

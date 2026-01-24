@@ -14,7 +14,7 @@ Item{
 	//property var source:"https://mooncdn.asmrmoon.com/中文音声/婉儿别闹/餐厅与望春楼小剧场.flac?sign=nEM47MH3hoG2K8X6zzptJUOqKz3y2zVKZhnl4_Wj_UQ=:0"
 	property var leftBarData:[
 		{headerText:"在线音频",btnData:[
-			{btnText:"ASMR",btnIcon:"qrc:/sources/image/我喜欢的.svg",qml:"qrc:/QML/content/Asmr_list.qml",isActive:true},
+            {btnText:"ASMR",btnIcon:"qrc:/sources/image/我喜欢的.svg",qml:"qrc:/QML/content/Asmr_list.qml",isActive:true},
 			{btnText:"关于我",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/Aboutme.qml",isActive:true},
 			],isActive:true,addAble:false},
 		{headerText:"测试模块",btnData:[
@@ -23,7 +23,7 @@ Item{
             {btnText:"tcp学习",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/TcpStudy.qml",isActive:false},
 			{btnText:"基础组件",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/BaseShow.qml",isActive:false},
             ],isActive:false,addAble:false},
-		{headerText:"收藏列表",btnData:[],isActive:true,addAble:true},
+        {headerText:"收藏列表",btnData:[],isActive:true,addAble:true},
 		]
     property string current_list_view:"ASMR"//记录当前选择的选项
     property string collect_add_message:""//记录哪个收藏夹多了内容
@@ -96,7 +96,7 @@ Item{
     }
     Connections {
         target: dowloadmgr
-        function onDownloadFinished(corepath){
+        function onDownloadFinished(msg,corepath){
             var fileName = corepath.split('/').pop();
             // 兼容处理：如果路径中没有 /，则使用原路径
             if (!fileName) {
@@ -104,21 +104,31 @@ Item{
             }
 
             // 拼接显示文本
-            leftbarDetail.text = fileName + " 下载完成";
+            leftbarDetail.set_flag=0
+            leftbarDetail.text = msg+": "+fileName;
             leftbarDetail.image_visible = false;
             leftbarDetail.open();
 
         }
-        function onSendMsg(corepath){
+        function onSendMsg(msg){
+            leftbarDetail.set_flag=0
+            leftbarDetail.text = msg;
+            leftbarDetail.image_visible = false;
+            leftbarDetail.open();
+        }
+        function onExitFile(corepath){
             var fileName = corepath.split('/').pop();
             // 兼容处理：如果路径中没有 /，则使用原路径
             if (!fileName) {
                 fileName = corepath;
             }
 
-            leftbarDetail.text = "正在下载 "+fileName;
-            leftbarDetail.image_visible = false;
+            leftbarDetail.set_flag=0
+            leftbarDetail.image_visible = true;
+            leftbarDetail.text = "已存在文件"+fileName;
             leftbarDetail.open();
+            //leftbarDetail.ensure=dowloadmgr.addDownloadTask(fullUrl,true);
+            //dowloadmgr.addDownloadTask(fullUrl);
         }
     }
 
@@ -282,6 +292,7 @@ Item{
 											let folderName = trimText;
 											let result=ASMRPlayer.add_collection(folderName);
 											if(!result){
+                                                leftbarDetail.set_flag=0;
 												collect_input_creat.visible = false; // 改为直接隐藏，避免重复点击
 												leftbarDetail.text="创建失败,已存在文件夹";
                                                 leftbarDetail.image_visible=true

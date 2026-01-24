@@ -9,7 +9,7 @@
 #include <QNetworkReply>  // QNetworkReply类封装了使用QNetworkAccessManager发布的请求相关的回复信息。
 #include <QNetworkAccessManager>  // QNetworkAccessManager类为应用提供发送网络请求和接收答复的API接口
 #include <memory>         // 使用std::unique_ptr需要包含该头文件
-
+#include <QRegularExpression>
 //#define DOWNLOAD_DEBUG    // 是否打印输出
 
 class DownloadTool : public QObject  // 继承QObject
@@ -21,12 +21,15 @@ public:
     explicit DownloadTool(const QString& downloadUrl, const QString& savePath, QObject* parent = nullptr);
     ~DownloadTool();
 
-    void startDownload();  // 开始下载文件
+    void startDownload();  // 强制，下载文件
     void cancelDownload(); // 取消下载文件
+
+    void startDownloadM3u8();//下载m3u8文件，合并ts流
 
 signals:
     void sigProgress(qint64 bytesRead, qint64 totalBytes, qreal progress);  // 下载进度信号
-    void sigDownloadFinished();  // 下载完成信号
+    void sigDownloadFinished(QString msg);  // 下载完成信号,取消成功 下载成功
+    void sigCandelDownload();
 
 private slots:
     void httpFinished();    // QNetworkReply::finished对应的槽函数

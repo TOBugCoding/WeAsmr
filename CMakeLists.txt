@@ -38,6 +38,7 @@ set(HEADER_FILES
     include/CursorPosProvider.h
     include/DownloadTool.h
     include/DownloadToolMgr.h
+    include/downloadm3u8.h include/downloadm3u8.cpp
 )
 
 # 生成可执行文件（WIN32用于Windows隐藏控制台）
