@@ -55,7 +55,7 @@ ApplicationWindow {
         anchors.left:parent.left
         anchors.right:parent.right
         targetwindow: mainWindow
-        z:1 //设置层级，让顶部超出的部分可以在leftbar里显示
+        z:3 //设置层级，让顶部超出的部分可以在leftbar里显示
         property bool fullscreen:false
         onFullscreenChanged:{
             if(fullscreen){
@@ -78,9 +78,18 @@ ApplicationWindow {
             bottomEnabled:  true
             cornerEnabled:  true
         }
-        z:0
+        z:2
     }
-    //管理contentitem可拉伸区域
+    //全局抢夺焦点
+    // MouseArea{
+    //     z:1
+    //     id:focusMgr
+    //     anchors.fill: parent
+    //     propagateComposedEvents: true
+    //     onPressed: function(mouse){focusMgr.forceActiveFocus();mouse.accepted = false}
+    //     onReleased: function(mouse){mouse.accepted = false;}
+    //     onClicked: function(mouse){mouse.accepted = false;}
+    // }
 
     //开启fps检测
     //FpsCounter{id:fpsCounter}

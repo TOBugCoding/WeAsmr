@@ -1,11 +1,12 @@
 #include "DownloadTool.h"
 #include "Downloadm3u8.h"
 #include <qthread.h>
-DownloadTool::DownloadTool(const QString& downloadUrl, const QString& savePath, QObject* parent)
+DownloadTool::DownloadTool(const QString& downloadUrl, const QString& savePath, bool dowloadM3u8,QObject* parent)
     : QObject(parent)
 {
     m_downloadUrl = downloadUrl;
     m_savePath    = savePath;
+    dowloadM3u8_= dowloadM3u8;
 }
 
 DownloadTool::~DownloadTool() {}
@@ -76,8 +77,8 @@ void DownloadTool::httpFinished()
         startRequest(redirectedUrl);
         return;
     }
-
-    if(m_downloadUrl.contains("m3u8")){
+    //判断出是m3u8文件，执行下载而不是在线播放
+    if(m_downloadUrl.contains("m3u8")&&!dowloadM3u8_){
         QString m3u8Content;
         //读取m3u8文件的ts视频地址
         if (fi.exists()) {
@@ -151,7 +152,68 @@ void DownloadTool::httpFinished()
             downloader->startMerge(m3u8Content, fileName);
         }, Qt::DirectConnection);
         downloadThread->start();
-    }else{
+    }
+    //判断出是m3u8,且存在空格的，需要将ts转义文件喂给播放器
+    else if(m_downloadUrl.contains("m3u8")){
+        QString m3u8Content;
+        if (fi.exists()) {
+            QFile m3u8File(fi.absoluteFilePath());
+            if (m3u8File.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                m3u8Content = QString::fromUtf8(m3u8File.readAll());
+                m3u8File.close();
+                QStringList m3u8Lines = m3u8Content.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts);
+                QStringList newM3u8Lines;
+                for (const QString& line : m3u8Lines) {
+                    QString trimmedLine = line.trimmed();
+                    // 注释行/空行直接保留，不处理
+                    if (trimmedLine.startsWith("#") || trimmedLine.isEmpty()) {
+                        newM3u8Lines << line;
+                    } else {
+                        // 核心逻辑：按/拆分路径分段，避免层级破坏
+                        QStringList pathSegments = trimmedLine.split("/");
+                        QStringList handledSegments;
+                        for (const QString& segment : pathSegments) {
+                            QString handledSegment = segment; // 先创建副本，避免修改原始segment
+                            handledSegment.replace(" ", "%20"); // 对副本原地替换，仅改空格
+                            handledSegments << handledSegment;
+                        }
+                        // 用原始/拼接分段，还原合法的相对路径
+                        QString finalTsUrl = handledSegments.join("/");
+                        newM3u8Lines << finalTsUrl;
+                    }
+                }
+                // 重构转义后的m3u8内容
+                m3u8Content = newM3u8Lines.join("\n");
+
+                // 将仅替换空格后的内容写回本地m3u8文件（覆盖原有内容）
+                if (m3u8File.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+                    m3u8File.write(m3u8Content.toUtf8()); // 保持UTF-8编码，避免乱码
+                    m3u8File.close();
+                    qDebug() << "成功写回m3u8文件，仅将空格替换为%20";
+                } else {
+                    qCritical() << "无法写入m3u8文件：" << m3u8File.errorString();
+                    emit sigDownloadFinished("m3u8文件处理失败");
+                    return;
+                }
+
+                // 规范VLC播放路径：解码原始路径+添加file:///前缀（本地文件专用）
+                QString originalPath = QUrl::fromPercentEncoding(fi.absoluteFilePath().toUtf8());
+                QString vlcPlayPath = "file:///" + originalPath;
+                emit M3u8Content(vlcPlayPath); // 发射给VLC的合法播放路径
+                emit sigDownloadFinished("下载完成");
+
+            } else {
+                qCritical() << "无法读取m3u8文件：" << m3u8File.errorString();
+                emit sigDownloadFinished("下载失败");
+                return;
+            }
+        } else {
+            qCritical() << "m3u8文件不存在！路径：" << fi.absoluteFilePath();
+            emit sigDownloadFinished("下载失败");
+            return;
+        }
+    }
+    else{
         emit sigDownloadFinished("下载完成");
     }
 

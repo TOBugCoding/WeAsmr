@@ -39,7 +39,7 @@ Rectangle {
 		anchors.fill: parent	
 		hoverEnabled:true 
 		propagateComposedEvents: true //开启后，子mousearea的点击会传递给父
-		cursorShape: Qt.PointingHandCursor//手型
+        cursorShape: Qt.PointingHandCursor//手型
 		default property Item content: null
 		onEntered: {
 			arrowEffect.brightness=1;

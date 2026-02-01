@@ -17,7 +17,7 @@ public:
     explicit DownloadToolMgr(QObject* parent = nullptr){}
     //这里可以自己判断是否存在相同的文件名，一旦存在，就将fullUrl先传递给前端，确定后直接执行
     //downloadDirect
-    Q_INVOKABLE void addDownloadTask(const QString& fullUrl,bool downloadDirect=false){
+    Q_INVOKABLE void addDownloadTask(const QString& fullUrl,bool downloadDirect=false,bool downloadM3u8=false){
         //默认需要检查文件是否存在相同的，注意，这里判断的是前缀，因为m3u8对应的是ts
         QString corePath = extractCorePathFromUrl(fullUrl);
         if (corePath.isEmpty()) {
@@ -28,7 +28,7 @@ public:
             emit sendMsg("该下载任务已存在");
             return;
         }
-        if(!downloadDirect){
+        if(!downloadDirect&&!downloadM3u8){
             const QUrl newUrl = QUrl::fromUserInput(fullUrl);
             if (!newUrl.isValid()) {
                 return;
@@ -43,22 +43,35 @@ public:
                 return;
             }
         }
-        DowloadItem* item = new DowloadItem(corePath,fullUrl);
+        DowloadItem* item = new DowloadItem(corePath,fullUrl,downloadM3u8);
         DowloadContainer.push_back(item);
+        //如果仅下载m3u8文件
+        if(downloadM3u8){
+            connect(&item->tool, &DownloadTool::M3u8Content, this, [this](QString content) {
+                emit m3u8Content(content);
+                qDebug()<<"返回m3u8内容"<<content;
+            });
+            connect(&item->tool, &DownloadTool::sigDownloadFinished,this,[this,corePath](QString msg){
+                //下载完成清空
+                qDebug()<<"dowloadFinished"<<corePath;
+                downloadFinishedClear(corePath);//清空下载任务占用的内存
+            });
+        }else{
+            // 连接进度信号
+            connect(&item->tool, &DownloadTool::sigProgress, this, [this, corePath](qint64 bytesRead, qint64 totalBytes, qreal progress) {
+                m_corePathProgressMap[corePath] = progress;
+                emit downloadProgressUpdated(corePath, progress);
+                //qDebug()<<corePath<<"receive dowload signal"<<QString::number(progress * 100, 'f', 2) << "%    ";
+            });
 
-        // 连接进度信号
-        connect(&item->tool, &DownloadTool::sigProgress, this, [this, corePath](qint64 bytesRead, qint64 totalBytes, qreal progress) {
-            m_corePathProgressMap[corePath] = progress;
-            emit downloadProgressUpdated(corePath, progress);
-            //qDebug()<<corePath<<"receive dowload signal"<<QString::number(progress * 100, 'f', 2) << "%    ";
-        });
+            connect(&item->tool, &DownloadTool::sigDownloadFinished,this,[this,corePath](QString msg){
+                //下载完成清空
+                qDebug()<<"dowloadFinished"<<corePath;
+                downloadFinishedClear(corePath);//清空下载任务占用的内存
+                emit downloadFinished(msg,corePath);//发送qml端进行提示
+            });
+        }
 
-        connect(&item->tool, &DownloadTool::sigDownloadFinished,this,[this,corePath](QString msg){
-            //下载完成清空
-            qDebug()<<"dowloadFinished"<<corePath;
-            downloadFinishedClear(corePath);//清空下载任务占用的内存
-            emit downloadFinished(msg,corePath);//发送qml端进行提示
-        });
         item->tool.startDownload();
     }
 
@@ -117,6 +130,7 @@ signals:
     void downloadFinished(const QString& msg,const QString& corePath);
     void sendMsg(const QString&msg);
     void exitFile(const QString& fullUrl);
+    void m3u8Content(const QString& content);//直接传递m3u8文件内容
 private:
     // 核心工具函数：基于固定规则截取核心路径
     //下载完成释放内存
@@ -169,9 +183,9 @@ private:
     struct DowloadItem{
         QString corePath;      // 核心路径：/中文音声/婉儿别闹/儿媳的苹果.mp3
         DownloadTool tool;
-        DowloadItem(const QString corepath="",const QString fullUrl="")
+        DowloadItem(const QString corepath="",const QString fullUrl="",bool downloadM3u8=false)
             :corePath(corepath),
-            tool(fullUrl, QCoreApplication::applicationDirPath() + "/download") {
+            tool(fullUrl, QCoreApplication::applicationDirPath() + "/download",downloadM3u8) {
         }
     };
 

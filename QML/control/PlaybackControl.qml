@@ -129,7 +129,7 @@ Item {
             }else{
                 playbackController.bottomplayerHeight=mainWindow.contentItem.height
                 topbar.fullscreen=true
-                topbar.opacity=1
+                topbar.opacity=0
             }
         }
     }

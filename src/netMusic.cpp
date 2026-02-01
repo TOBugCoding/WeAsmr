@@ -799,6 +799,7 @@ QString NetMusic::get_current_playing(){
 
 
 void NetMusic::get_sign_path(const QString path){
+    //如果路径是含空格的m3u8则不允许进行下一步
 
     QUrl url("https://asmrmoon.com/api/fs/get");
     QNetworkRequest request(url);
@@ -813,7 +814,7 @@ void NetMusic::get_sign_path(const QString path){
     QByteArray postData = jsonDoc.toJson(QJsonDocument::Compact);
     QNetworkReply* reply = m_netManager->post(request, postData);
 
-    connect(reply, &QNetworkReply::finished, this, [reply,this]() {
+    connect(reply, &QNetworkReply::finished, this, [reply,this,path]() {
         QByteArray responseData = reply->readAll();
         QJsonParseError parseError;
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &parseError);
@@ -823,8 +824,15 @@ void NetMusic::get_sign_path(const QString path){
             QString sign_path=dataObj["raw_url"].toString();
             QStringList parts = sign_path.split("sign=");
             sign_record=parts[1];
-            qDebug()<<"签名："<<sign_record;
-            emit signPathReceived(sign_path);
+            qDebug()<<"路径："<<sign_path;
+            if(path.contains(" ")&&path.contains("m3u8")){
+                emit emptyM3u8(sign_path);
+                qDebug()<<"检测到含空格的m3u8";
+                return;
+            }else{
+                emit signPathReceived(sign_path);
+            }
+
         }
         reply->deleteLater();
     });

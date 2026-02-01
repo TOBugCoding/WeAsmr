@@ -104,6 +104,8 @@ signals:
     void downloadPathReceived(QString path);
     //出错提示
     void errorDetail(QString msg);
+    //检测到含空格的m3u8文件
+    void emptyM3u8(QString path);
 
 private slots:
     //统一返回接口

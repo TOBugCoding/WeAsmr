@@ -38,7 +38,22 @@ Item {
     onNow_posChanged:{
        history_show()
     }
- 
+    PropertyAnimation{
+        id:topbar_hide
+        property:"opacity"
+        target:root
+        to:0.0
+        duration:200
+        easing.type: Easing.OutCubic
+    }
+    PropertyAnimation{
+        id:topbar_show
+        property:"opacity"
+        target:root
+        to:1.0
+        duration:200
+        easing.type: Easing.OutCubic
+    }
     // 原有的RowLayout作为内部布局
     Item{
         z:3
@@ -51,10 +66,14 @@ Item {
                 id: titleBarMouseRegion
                 property var clickPos
                 anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
                 onPressed: function(mouse){
-                    clickPos = { x: mouse.x, y: mouse.y }
-                    //抢夺焦点
-                    titleBarMouseRegion.forceActiveFocus()
+                    if(pressed){
+                        clickPos = { x: mouse.x, y: mouse.y }
+                        //抢夺焦点
+                        titleBarMouseRegion.forceActiveFocus()
+                    }
+
                 }
                 onPositionChanged: {
                     //mousePosition由main.cpp里注册了单例
@@ -64,14 +83,14 @@ Item {
                 onDoubleClicked: {
                     maxmize_btn.clicked();
                 }
-            
-            }  
+
+            }
         }
         RowLayout {
             id:layout
             anchors.fill: parent  // 充满整个根Item
             spacing: 0
-        
+
             //左侧间距 定义最大高度
             Item{
                 height:root.topbar_height
@@ -92,16 +111,16 @@ Item {
                         id: titleLabel
                         text: qsTr("🌙 ASMR")
                         //topPadding:6
-                    }    
+                    }
                 }
             }
             Item{
-                Layout.fillWidth: true 
+                Layout.fillWidth: true
                 Layout.fillHeight:true
                 Rectangle{
                     anchors.fill:parent
-                    color: theme.contentColor //Theme在main.cpp里声明了id	
-			        opacity:theme.opacity
+                    color: theme.contentColor //Theme在main.cpp里声明了id
+                    opacity:theme.opacity
                 }
                 RowLayout{
                     spacing:15
@@ -123,7 +142,7 @@ Item {
                                 leftbar.thisQml=root.history[root.now_pos]
                             }
                         }
-            
+
                     }
                     //右历史回滚
                     HoverButton{
@@ -136,7 +155,7 @@ Item {
                             }
                         }
                     }
-        
+
                     //搜索框输入
                     TextField {
                         id: searchInput
@@ -156,15 +175,15 @@ Item {
                         onClicked: {
                                 leftbar.thisQml="qrc:/QML/content/SearchShowPage.qml"
                                 //搜索页数默认为1
-                                ASMRPlayer.set_page(1) 
+                                ASMRPlayer.set_page(1)
                                 leftbar.current_list_view=""
-                                ASMRPlayer.search_list(searchInput.text) 
+                                ASMRPlayer.search_list(searchInput.text)
                         }
                     }
-                    Item { 
+                    Item {
                         Layout.fillWidth: true //自动填充剩余区域
                     }
-                  
+
                     //颜色
                     HoverButton{
                         image_path:theme.isDark?"qrc:/sources/image/太阳.svg":"qrc:/sources/image/月亮-fill.svg"
@@ -212,8 +231,8 @@ Item {
                                     gradient: Gradient {
                                         GradientStop { position: 1.0; color: theme.green }          // 起始颜色
                                         GradientStop { position: 0.0; color: theme.green + "80" }   // 结束颜色（80=128，半透明）
-                                    }   
-                
+                                    }
+
                                 }
                                 handle: Rectangle {
                                     anchors.horizontalCenter:parent.horizontalCenter
@@ -226,14 +245,14 @@ Item {
                                     border.color: "#bdbebf"
                                 }
 
-                            
+
                             }
-                      
+
                             onVisibleChanged:{
                                 if(visible){
                                     opacity_body.forceActiveFocus()
                                 }
-                            }       
+                            }
                         }
                     }
                     HoverButton{
@@ -286,7 +305,7 @@ Item {
                         image_path:"qrc:/sources/image/close.svg"
                         onClicked: exitDialog.open()
                     }
-                
+
                 }
             }
         }
@@ -298,13 +317,37 @@ Item {
         anchors.right:parent.right
         height:titleBarMouseRegion.height+5
         MouseArea{
-            anchors.fill:parent
-            hoverEnabled:true
-            onEntered:{if(topbar.fullscreen)topbar.opacity=1}
+               id: topbarHoverArea // 增加id，方便获取区域坐标
+               anchors.fill:parent
+               hoverEnabled:true
+               // 鼠标进入：全屏时显示顶部栏（原有逻辑保留）
+               onEntered:{if(topbar.fullscreen)topbar_show.start()}
+               // 鼠标离开：增加真实位置判断，仅真正移出时隐藏
+               onExited: {
+                   if(topbar.fullscreen) {
+                       // 获取当前鼠标全局坐标
+                       var mouseGlobalPos = mousePosition.cursorPos();
+                       // 将全局坐标转换为当前MouseArea的本地坐标
+                       var mouseLocalPos = topbarHoverArea.mapFromGlobal(mouseGlobalPos.x, mouseGlobalPos.y);
+                       // 判定
+                       var isMouseInArea = (mouseLocalPos.x >= 0 && mouseLocalPos.x < topbarHoverArea.width)
+                                        && (mouseLocalPos.y >= 0 && mouseLocalPos.y < topbarHoverArea.height);
+                       // 仅当鼠标真正移出区域时，才设置opacity为0
+                       if(!isMouseInArea) {
+                           topbar_hide.start();
+                       }
+                   }
+               }
         }
     }
-    Keys.onEscapePressed:{
-        closebtn.clicked()
+
+    Shortcut{
+        sequence: "esc"
+        onActivated: {
+            closebtn.clicked()
+            console.log("触发")
+        }
+
     }
     
     Component.onCompleted: {

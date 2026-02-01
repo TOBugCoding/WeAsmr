@@ -135,7 +135,6 @@ Item{
     Row{
 		id: rootRow
 		anchors.fill: parent
-		
 		Item {
 			id:left_btn_list
 			width: leftBar.btnWidth*1.5
@@ -235,7 +234,7 @@ Item{
 											MouseArea {
 												anchors.fill: parent
 												hoverEnabled: true
-												cursorShape: Qt.PointingHandCursor
+                                                cursorShape: Qt.PointingHandCursor
 												onEntered:{parent.color=theme.green}
 												onExited:{parent.color=Qt.binding(function() { return theme.samllTitleColor })}
 												onClicked:{list_dynamic_btn.clicked()}

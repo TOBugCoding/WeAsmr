@@ -18,7 +18,7 @@ class DownloadTool : public QObject  // 继承QObject
 
 public:
     // 构造函数参数:  1)http文件完整的url  2)保存的路径
-    explicit DownloadTool(const QString& downloadUrl, const QString& savePath, QObject* parent = nullptr);
+    explicit DownloadTool(const QString& downloadUrl, const QString& savePath,bool dowloadM3u8 = false ,QObject* parent = nullptr);
     ~DownloadTool();
 
     void startDownload();  // 强制，下载文件
@@ -30,6 +30,7 @@ signals:
     void sigProgress(qint64 bytesRead, qint64 totalBytes, qreal progress);  // 下载进度信号
     void sigDownloadFinished(QString msg);  // 下载完成信号,取消成功 下载成功
     void sigCandelDownload();
+    void M3u8Content(QString content);
 
 private slots:
     void httpFinished();    // QNetworkReply::finished对应的槽函数
@@ -44,7 +45,7 @@ private:
 private:
     QString m_downloadUrl;  // 保存构造时传入的下载url
     QString m_savePath;     // 保存构造时传入的保存路径
-
+    bool dowloadM3u8_;//是否下载m3u8文件，默认false
     const QString defaultFileName = "tmp";  // 默认下载到tmp文件夹
     QUrl url;
     QNetworkAccessManager qnam;

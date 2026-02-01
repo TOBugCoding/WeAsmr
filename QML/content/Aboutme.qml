@@ -82,6 +82,7 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: 60
         anchors.left:parent.left
+        anchors.leftMargin: 50
         spacing: 16
 
         Text {
