@@ -40,8 +40,10 @@ public:
     /**
      * @brief 停止下载合并
      */
+    void extracted();
     void stopMerge();
-
+    
+    
 signals:
     // 进度更新（current:已完成分片数, total:总分片数）
     void progressUpdated(int current, int total, const QString &currentUrl = "");
@@ -61,6 +63,8 @@ private:
     void startNextDownloads();
     // 合并所有缓存的TS分片
     bool mergeCacheFiles();
+    // 中途合并
+    void partCacheFiles();
     // 清理资源（缓存文件、网络请求等）
     void cleanResources();
     // 获取分片的缓存文件路径

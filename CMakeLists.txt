@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 优先搜索当前目录（适配MOC/UI生成文件）
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-# 查找Qt6模块（修正network为Network）
+
 find_package(Qt6 6.9 REQUIRED COMPONENTS
     Core
     Gui
@@ -23,13 +23,13 @@ find_package(Qt6 6.9 REQUIRED COMPONENTS
     Network
 )
 
-# 拆分源文件/头文件（更清晰）
+
 set(SRC_FILES
     src/main.cpp
     src/netMusic.cpp
     src/fpscounter.cpp
     src/DownloadTool.cpp
-    qml.qrc  # 资源文件归类到源文件
+    qml.qrc
 )
 
 set(HEADER_FILES
@@ -41,10 +41,13 @@ set(HEADER_FILES
     include/downloadm3u8.h include/downloadm3u8.cpp
 )
 
-# 生成可执行文件（WIN32用于Windows隐藏控制台）
+set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/icon.rc")
+
+
 qt6_add_executable(WeAsmrPlayer WIN32
     ${SRC_FILES}
-    ${HEADER_FILES}  # 仅用于IDE显示
+    ${HEADER_FILES}
+    ${APP_ICON_RESOURCE_WINDOWS}
 )
 
 # 指定头文件搜索路径（现代写法，推荐）

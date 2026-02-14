@@ -12,7 +12,8 @@ Item {
     id: playbackController
 
     required property MediaPlayer mediaPlayer
-
+    required property VideoOutput output
+    required property AudioOutput audioOutput
     property alias muted: audioControl.muted
     property alias volume: audioControl.volume
     property alias loop: loopButton.loops
@@ -29,7 +30,7 @@ Item {
                         || playbackSeekControl.busy
 
     // 紧凑化高度（适配底部固定显示）
-    implicitHeight: 100 // 原 168/208 → 大幅压缩，适合底部常驻
+    implicitHeight: 90 // 原 168/208 → 大幅压缩，适合底部常驻
     property int bottomplayerHeight:100
     Behavior on opacity { NumberAnimation { duration: 300 } }
     //教程https://runebook.dev/zh/docs/qt/qml-qtquick-dialogs-folderdialog/currentFolder
@@ -44,6 +45,17 @@ Item {
             playbackController.mediaPlayer.stop()
             playbackController.mediaPlayer.source = fileDialog.selectedFile
             playbackController.mediaPlayer.play()
+            audioOutput.volume=playbackController.volume
+            var fileUrl = fileDialog.selectedFile.toString()
+            var fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1)
+            systemIcon.tooltip = fileName
+            if(fileDialog.selectedFile.toString().includes(".m3u8")||fileDialog.selectedFile.toString().includes(".ts")){
+                output.visible = true
+                console.log("视频播放")
+            } else {
+               output.visible = false
+                console.log("音频播放")
+            }
         }
     }
 
@@ -112,11 +124,15 @@ Item {
         icon.source: "../images/loop.svg"
         icon.color: loops? theme.green:theme.fontColor
         onClicked: loops=!loops
+        implicitWidth: 38
+        implicitHeight: 38
     }
 
     CustomButton {
         id: settingsButton
         icon.source: "../images/全屏.svg"
+        implicitWidth: 40
+        implicitHeight: 40
         icon.color:playbackController.bottomplayerHeight===mainWindow.contentItem.height?theme.green:theme.fontColor
         onClicked: {
             //全屏状态
@@ -149,21 +165,21 @@ Item {
         //VLC下 1是缓存 2是播放 3是暂停 4是播放结束
         CustomRoundButton {
             id: playButton
-            visible: playbackController.mediaPlayer.playbackState !==2
+            visible: (playbackController.mediaPlayer.playbackState !==2)||(playbackController.mediaPlayer.pauseAnim.running)
             icon.source: "../images/play_symbol.svg"
             icon.color:theme.fontColor
             onClicked: {
-                playbackController.mediaPlayer.play()
+                playbackController.mediaPlayer.playAnim.start()
             }
         }
 
         CustomRoundButton {
             id: pauseButton
-            visible: (playbackController.mediaPlayer.playbackState === 2)
+            visible: !playButton.visible
             icon.source: "../images/pause_symbol.svg"
             icon.color:theme.fontColor
             onClicked: {
-                playbackController.mediaPlayer.pause()
+                playbackController.mediaPlayer.pauseAnim.start()
             }
         }
 
@@ -245,7 +261,7 @@ Item {
                     anchors.rightMargin: 30 // 取消右边距，紧凑显示
                     //anchors.left: fdbProxy.right
                     //anchors.leftMargin: 500 // 原 30 → 大幅缩小边距
-                    anchors.verticalCenter: parent.verticalCenter
+                    //anchors.verticalCenter: parent.verticalCenter
                 }
 
                 LayoutItemProxy {
@@ -253,6 +269,9 @@ Item {
                     target: settingsButton
                     anchors.right: parent.right
                     anchors.rightMargin: 0 // 取消右边距，紧凑显示
+                    anchors.bottom:parent.bottom
+                    anchors.bottomMargin: -7
+                    //anchors.verticalCenter: parent.verticalCenter
                 }
             } // Item
 

@@ -2,12 +2,30 @@
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
 #include <QQmlContext>
+
+#include <QLocalServer>
+#include <QLocalSocket>
 #include "CursorPosProvider.h"
 #include "netMusic.h"
 #include "DownloadToolMgr.h"
 
 int main(int argc, char* argv[])
 {
+    QString serverName = "AsmrMoonServer";
+    QLocalSocket socket;
+    socket.connectToServer(serverName);
+    if (socket.waitForConnected(1000)) {
+        return -1;
+    }
+
+    QLocalServer server;
+    if (server.listen(serverName)) {
+        // 此时监听失败，可能是程序崩溃时,残留进程服务导致的,移除之
+        if(server.serverError()== QAbstractSocket::AddressInUseError){
+            QLocalServer::removeServer(serverName);
+            server.listen(serverName);
+        }
+    }
 
     QGuiApplication app(argc, argv);
     app.setWindowIcon(QIcon(":/fonts/icon.ico"));
@@ -46,6 +64,20 @@ int main(int argc, char* argv[])
                          if (!obj && url == objUrl)
                              QCoreApplication::exit(-1); // 加载失败时退出
                      }, Qt::QueuedConnection);
+
+    QObject::connect(&server, &QLocalServer::newConnection, &server, [&engine]() {
+        QObject *qmlRootObj = nullptr;
+        const QList<QObject*> rootObjects = engine.rootObjects(); // 具名局部变量
+        if (!rootObjects.isEmpty()) {                             // 对具名变量操作
+            qmlRootObj = rootObjects.first();
+        }
+        QMetaObject::invokeMethod(
+        qmlRootObj,
+        "raiseAndShowWindow",
+        Qt::QueuedConnection
+        );
+
+    });
     engine.load(url);
 
     return app.exec();

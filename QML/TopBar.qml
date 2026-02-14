@@ -17,27 +17,21 @@ Item {
     property bool isDragging: false
     property point dragStart
     property bool isMaximized: false
-    property var history:[]
-    property int now_pos:0
+
     property bool can_minize:false//记录是否消除了小型窗口
     property bool search_focus:false//记录搜索框焦点
     //浏览记录按钮是否可点击
     function history_show(){
-        if(now_pos==0){
-            left_history.btn_clear()
-        }else{
+        if(leftbar.thisQml==="qrc:/QML/content/Asmr_list.qml"){
             left_history.btn_restor()
-        }
-
-        if(now_pos==history.length-1){
-            right_history.btn_clear()
-        }else{
             right_history.btn_restor()
+
+        }else{
+            left_history.btn_clear()
+            right_history.btn_clear()
         }
     }
-    onNow_posChanged:{
-       history_show()
-    }
+
     PropertyAnimation{
         id:topbar_hide
         property:"opacity"
@@ -137,10 +131,7 @@ Item {
                             m_rotation = 180
                         }
                         onClicked: {
-                           if(root.now_pos!=0){
-                                root.now_pos--;
-                                leftbar.thisQml=root.history[root.now_pos]
-                            }
+                            ASMRPlayer.backHistory();
                         }
 
                     }
@@ -149,10 +140,7 @@ Item {
                         id:right_history
                         image_path:"qrc:/sources/image/y_icon_line_direction_arrow_right.svg"
                         onClicked: {
-                           if(root.now_pos!=root.history.length-1){
-                                root.now_pos++;
-                                leftbar.thisQml=root.history[root.now_pos]
-                            }
+                            ASMRPlayer.forwardHistory();
                         }
                     }
 
@@ -238,10 +226,10 @@ Item {
                                     anchors.horizontalCenter:parent.horizontalCenter
                                     y: opacity_body.visualPosition * (opacity_body.availableHeight - height)
                                     x: opacity_body.availableWidth / 2 - width / 2
-                                    implicitWidth: 18
-                                    implicitHeight: 18
-                                    radius: 13
-                                    color: opacity_body.pressed ? "#f0f0f0" : "#f6f6f6"
+                                    implicitWidth: 14
+                                    implicitHeight: 14
+                                    radius: width/2
+                                    color: theme.green
                                     border.color: "#bdbebf"
                                 }
 
@@ -303,7 +291,9 @@ Item {
                     HoverButton {
                         id:closebtn
                         image_path:"qrc:/sources/image/close.svg"
-                        onClicked: exitDialog.open()
+                        //onClicked: exitDialog.open()//修改为交给托盘关闭
+                        onClicked:{root.targetwindow.hide()}
+
                     }
 
                 }
@@ -351,7 +341,6 @@ Item {
     }
     
     Component.onCompleted: {
-        root.history.push(leftbar.thisQml)
         history_show()
     }
 }

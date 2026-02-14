@@ -6,11 +6,41 @@ import QuickVLC
 import QtQuick.Layouts
 import com.asmr.player 1.0
 import "control"
+import "components"
 //底部播放器，保证切换页面也不会打断asmr的播放
 Item{
     id:root
     implicitHeight: playbackController.bottomplayerHeight
     property alias exposedMediaPlayer: mediaPlayer
+
+    NumberAnimation{
+        id:resumeAnim
+        target: audioOutput
+        property: "volume"
+        from: 0
+        to:playbackController.volume
+        duration: 500
+        easing.type: Easing.InQuad
+        onStarted: {
+            pauseAnim.stop()
+            mediaPlayer.play()
+        }
+    }
+    NumberAnimation{
+        id:pauseAnim
+        target: audioOutput
+        property: "volume"
+        from: playbackController.volume
+        to:0
+        duration: 500
+        easing.type: Easing.InQuad
+        onStarted: {
+            resumeAnim.stop()
+        }
+        onStopped: {
+            mediaPlayer.pause()
+        }
+    }
     Item{
         anchors.fill: parent
         Rectangle{
@@ -22,6 +52,13 @@ Item{
             anchors.fill: parent
             source: mediaPlayer
             z:1
+        }
+        Item {
+            z:2
+            id: loadingOverlay
+            anchors.fill: parent
+            visible: false
+            //后续添加加载动画
         }
     }
      
@@ -55,6 +92,8 @@ Item{
             opacity: showControls
             onShowControlsChanged: activityListener.cursorShape = showControls ? Qt.ArrowCursor : Qt.BlankCursor
             mediaPlayer: mediaPlayer
+            output:output
+            audioOutput:audioOutput
         }
         Timer {
             id: timer
@@ -72,10 +111,11 @@ Item{
         onPositionChanged: mouse => activityHandler(mouse)
         onPressed: function(mouse){
             activityHandler(mouse)
+            if(!topbar.fullscreen){return}
             if(playbackController.mediaPlayer.playbackState !==2){
-                playbackController.mediaPlayer.play()
+                resumeAnim.start()
             }else{
-                playbackController.mediaPlayer.pause();
+                pauseAnim.start()
             }
 
         }
@@ -98,65 +138,97 @@ Item{
             }
         }
     }
-    MessageDialog {
-        id: mediaError
-        buttons: MessageDialog.Ok
+    MessageBox {
+        id: msg
     }
     Shortcut {
-          sequence:"space"  // 绑定空格键
-          // context: Shortcut.ApplicationShortcut  // 可选：整个应用内全局
-          onActivated: {
-              if (mediaPlayer.playbackState ===2) {
+        sequence:"space"  // 绑定空格键
+        // context: Shortcut.ApplicationShortcut  // 可选：整个应用内全局
+        onActivated: {
+            if (mediaPlayer.playbackState ===2) {
                   mediaPlayer.pause()
-              } else {
-                  mediaPlayer.play()
-              }
-          }
+            } else {
+                mediaPlayer.play()
+            }
+        }
+        enabled: mediaPlayer.duration > 0
+    }
+
+    Shortcut {
+        sequence: "left"
+        onActivated: {
+            const pos = Math.max(0, mediaPlayer.position - 10000)
+            mediaPlayer.position = pos
+        }
+        enabled: mediaPlayer.duration > 0
       }
 
-      Shortcut {
-          sequence: "left"
-          onActivated: {
-              const pos = Math.max(0, mediaPlayer.position - 10000)
-              mediaPlayer.position = pos
-          }
-      }
+    Shortcut {
+        sequence: "right"
+        onActivated: {
+            const pos = Math.min(mediaPlayer.duration, mediaPlayer.position + 10000)
+            mediaPlayer.position = pos
 
-      Shortcut {
-          sequence: "right"
-          onActivated: {
-              const pos = Math.min(mediaPlayer.duration, mediaPlayer.position + 10000)
-              mediaPlayer.position = pos
+        }
 
-          }
-          // 可选：动态禁用（如视频未加载完成时）
-          // enabled: mediaPlayer.duration > 0
-      }
+        enabled: mediaPlayer.duration > 0
+    }
 
     // 播放器主体
     MediaPlayer {
+        property int playNum:0
         id: mediaPlayer
         audioOutput: audioOutput
         onPlaybackStateChanged:{
             console.log("播放状态："+mediaPlayer.playbackState)
-            if(mediaPlayer.playbackState===4){
+            if(mediaPlayer.playbackState===1){
+                loadingOverlay.visible=true
+            }
+            else if(mediaPlayer.playbackState===2){
+                //播放
+                mediaPlayer.playNum=0
+                loadingOverlay.visible=false
+            }
+            else if(mediaPlayer.playbackState===3){
+                //暂停
+            }
+            else if(mediaPlayer.playbackState===4){
+                //计数position变化小于3次则播放失败
+                if(mediaPlayer.playNum<3){
+                    msg.set_flag=0;
+                    msg.text = "播放失败："+ASMRPlayer.get_current_playing().split("/").pop();
+                    msg.image_visible = true;
+                    msg.open();
+                    output.visible = false
+                }
+                systemIcon.tooltip="ASMRMOON"
                 if(playbackController.loop){
                     reload_audio();
                 }else{
                     next_audio_play();
                 }
-
             }
         }
-        //当分辨率变化时
+        onPositionChanged: {
+            if(mediaPlayer.playNum<3){
+                mediaPlayer.playNum++
+            }
+        }
         onErrorOccurred: {
             console.log("错误"+errorString)
+            mediaError.open(errorString)
         }
+        property alias playAnim: resumeAnim
+        property alias pauseAnim: pauseAnim
     }
     AudioOutput {
         id: audioOutput
         volume: playbackController.volume
         muted: playbackController.muted
+        Component.onCompleted: {
+            audioOutput.volume=playbackController.volume
+        }
+
     }
     function next_audio_play(){
         let path=ASMRPlayer.get_audioName()
@@ -167,17 +239,23 @@ Item{
     }
     function reload_audio(){
         let path = ASMRPlayer.get_current_playing()
+        console.log("重播"+path)
         ASMRPlayer.get_sign_path(path);
     }
     Connections {
         target: ASMRPlayer
         function onSignPathReceived(path){
-            if(path.toString().includes(".m3u8")){
+            audioOutput.volume=playbackController.volume
+            if(path.toString().includes(".m3u8")||path.toString().includes(".ts")){
                 output.visible = true
             } else {
                output.visible = false
             }
+            mediaPlayer.stop()
             mediaPlayer.source = path
+            mediaPlayer.play()
+            systemIcon.tooltip=ASMRPlayer.get_current_playing()
+            loadingOverlay.visible=true
         }
         function onDownloadPathReceived(path){
             //执行下载任务
@@ -191,9 +269,11 @@ Item{
     Connections{
         target: dowloadmgr
         function onM3u8Content(content){
+            audioOutput.volume=playbackController.volume
             mediaPlayer.source = content
             output.visible = true
-            console.log("视频")
+            systemIcon.tooltip=ASMRPlayer.get_current_playing()
+            loadingOverlay.visible=true
             //console.log(content)
         }
     }

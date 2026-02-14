@@ -28,6 +28,9 @@ public:
             emit sendMsg("该下载任务已存在");
             return;
         }
+        if(!downloadM3u8){
+            emit downloadProgressUpdated(corePath, 0.01);
+        }
         if(!downloadDirect&&!downloadM3u8){
             const QUrl newUrl = QUrl::fromUserInput(fullUrl);
             if (!newUrl.isValid()) {
@@ -39,7 +42,7 @@ public:
 
             // 调用自定义函数，判断是否存在同名（忽略后缀）的文件
             if (isSameFileNameExists(downloadDir, fileName)) {
-                emit exitFile(corePath);
+                emit downloadProgressUpdated(corePath, 0);
                 return;
             }
         }
@@ -175,7 +178,11 @@ private:
         // 遍历所有文件，对比无后缀名称
         for (const QFileInfo& fileInfo : fileList) {
             if (fileInfo.baseName() == targetBaseName) {
-                return true; // 找到同名（忽略后缀）的文件
+                //存在ts视频且存在视频内容
+                if (fileInfo.suffix().toLower() == "ts"&&fileInfo.size() > 0) {
+                    emit exitFile(fileInfo.fileName());
+                    return true;
+                }
             }
         }
         return false;

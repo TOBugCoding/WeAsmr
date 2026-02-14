@@ -53,7 +53,7 @@ Item {
         }
     }
     // 显示音频列表的ListView
-     //列表实体显示区域
+    //列表实体显示区域
     Item{
         id:titlehead
         height:100
@@ -179,7 +179,7 @@ Item {
                             Rectangle{
                                 id:dowloadShow
                                 property real dowloadprogress: listItem.downloadProgress
-                                color: "#826858"
+                                color: theme.dowloadColor
                                 opacity:0.8
                                 radius: 4
                                 anchors.left:parent.left
@@ -219,7 +219,8 @@ Item {
                                     Layout.alignment: Qt.AlignVCenter
                                 }
                                 Text {
-                                    text: model.audioPath
+                                    id:audiopath
+                                    text: model.name
                                     font.pixelSize: 16
                                     color: currentPlaying === model.model.audioPath ? theme.green : theme.fontColor
                                     elide: Text.ElideRight

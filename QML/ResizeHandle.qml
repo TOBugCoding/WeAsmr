@@ -9,6 +9,8 @@ Item {
     //开关：默认全部禁用
     property bool rightEnabled: false      // 右侧边
     property bool bottomEnabled: false     // 底边
+    property bool leftEnabled: false       // 左侧边
+    property bool topEnabled:false         // 顶部
     property bool cornerEnabled: false     // 右下角
 
     readonly property var win: Window.window //自动找到mainWindow
@@ -38,7 +40,20 @@ Item {
         cursorShape: Qt.SizeHorCursor
         onPressed: root.win.startSystemResize(Qt.RightEdge)
     }
-
+    //左侧边
+    MouseArea {
+        id: leftHandle
+        visible: root.leftEnabled
+        anchors {
+            top: parent.top; bottom: parent.bottom
+            left: parent.left
+            bottomMargin: cornerHandle.visible ? 8 : 0   // 避开角落
+            topMargin:    cornerHandle.visible ? 8 : 0
+        }
+        width: 8
+        cursorShape: Qt.SizeHorCursor
+        onPressed: root.win.startSystemResize(Qt.LeftEdge)
+    }
     //底边
     MouseArea {
         id: bottomHandle
@@ -52,5 +67,17 @@ Item {
         height: 8
         cursorShape: Qt.SizeVerCursor
         onPressed: root.win.startSystemResize(Qt.BottomEdge)
+    }
+    //顶部
+    MouseArea {
+        id: topHandle
+        visible: root.topEnabled
+        anchors {
+            left: parent.left; right: parent.right
+            top: parent.top
+        }
+        height: 8
+        cursorShape: Qt.SizeVerCursor
+        onPressed: root.win.startSystemResize(Qt.TopEdge)
     }
 }

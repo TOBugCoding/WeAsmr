@@ -17,7 +17,7 @@
 
 struct AsmrItem {
     Q_GADGET
-        Q_PROPERTY(QString name MEMBER name)  // 可选：暴露属性供元对象系统使用
+        Q_PROPERTY(QString name MEMBER name)
         Q_PROPERTY(bool isDir MEMBER isDir)
 public:
     QString name;
@@ -25,6 +25,19 @@ public:
     AsmrItem(const QString& n = "", bool d = false)
         : name(n), isDir(d) {
     }
+};
+
+struct FilePath{
+    Q_GADGET
+        Q_PROPERTY(QString file MEMBER file)
+        Q_PROPERTY(int now_page MEMBER now_page)
+        Q_PROPERTY(int total_page MEMBER total_page)
+public:
+    QString file;
+    int now_page;
+    int total_page;
+    FilePath() : file(""), now_page(0), total_page(0) {}
+    FilePath(const QString& _file,int _page,int _total):file(_file),now_page(_page),total_page(_total){}
 };
 
 class NetMusic : public QObject
@@ -44,6 +57,7 @@ public:
     Q_INVOKABLE QString get_path();Q_INVOKABLE void set_path(QString path);
     //获取/修改当前页数
     Q_INVOKABLE int get_page();Q_INVOKABLE void set_page(int page);
+    Q_INVOKABLE int get_totalpage(){return total_page;}
     Q_INVOKABLE QString get_collect_file(); Q_INVOKABLE void set_collect_file(QString path,bool fresh=false);
     //输入完整播放路径 收藏
     //qml播放示例
@@ -80,6 +94,16 @@ public:
     {
         asmr_list_type, search_list_type
     };
+    //推入历史，无返回
+    Q_INVOKABLE void pushHistory(const QString&file,int page,int total);
+    //修改历史的当前页，无返回
+    Q_INVOKABLE void fixHistory(int page);
+    //修改总页数
+    Q_INVOKABLE void fixTotalHistory(int totalpage);
+    //回滚历史，有返回
+    Q_INVOKABLE void backHistory();
+    //前进历史，有返回
+    Q_INVOKABLE void forwardHistory();
 signals:
     //load_audio完成后触发信号 发送QList给qml进行加载
     //key:收藏夹名称
@@ -106,6 +130,8 @@ signals:
     void errorDetail(QString msg);
     //检测到含空格的m3u8文件
     void emptyM3u8(QString path);
+    //发送当前响应的asmr路径和页数
+    void sigFilePath(FilePath filepath);
 
 private slots:
     //统一返回接口
@@ -126,7 +152,7 @@ private:
     QString current_playing;//记录当前正在播放的音频
     QString current_url=""; // 记录完整文件夹路径 不含音频名称
     int current_page=1; //当前的页数
-    int total_page=0;
+    int total_page=1;
     QString collect_file;//当前的收藏夹
     QString sign_record="?sign=J6Pg2iI3DmhltIzETpxWUM13oVCCHYw6jHEtlrFKWOE=:0";
     //区分调用哪个网络接口
@@ -138,5 +164,7 @@ private:
     //search_list网络回调
     void net_search_list(QNetworkReply* m_currentReply);
 
-
+    //存储asmr页面文件夹更改路径，执行回退和前进
+    QList<FilePath>* history;
+    int currentFilePathIndex=0;
 };

@@ -11,6 +11,8 @@ QtObject {
     property int openAnimatedWindowCount: 0
     // 是否有任意动画窗口处于全屏打开状态
     property bool anyAnimatedWindowOpen: openAnimatedWindowCount > 0
+    //下载进度条颜色
+    property color dowloadColor:"#00C4B3"
     // 透明度
     property double opacity:0.8
     // === 顶部栏和左侧栏颜色 ===

@@ -41,7 +41,7 @@ void DownloadTool::cancelDownload()
     httpRequestAborted = true;
     reply->abort();
     //reply->disconnect(this);
-    emit sigCandelDownload();
+    emit sigCandelDownload();//取消m3u8的下载
 }
 
 void DownloadTool::httpFinished()
@@ -100,6 +100,7 @@ void DownloadTool::httpFinished()
         //新建一个下载线程
         QThread* downloadThread = new QThread();
         Downloadm3u8* downloader=new Downloadm3u8();
+        emit sigProgress(0, 0, 0.01);
         downloader->moveToThread(downloadThread);
         QObject::connect(this,&DownloadTool::sigCandelDownload,this,[downloader](){
             qInfo() << "cancelDownload信号触发，强制结束合并/下载";
@@ -121,12 +122,12 @@ void DownloadTool::httpFinished()
             QFile::remove(fi.absoluteFilePath());//删除m3u8文件
             downloader->deleteLater();
             //销毁完成告知Mgr
-            QObject::connect(downloadThread,&QThread::finished,this,[this,suc](){
+            QObject::connect(downloadThread,&QThread::finished,this,[this,suc,Msg](){
                 qDebug()<<"线程退出";
                 if (suc) {
-                    emit sigDownloadFinished("下载完成");
+                    emit sigDownloadFinished(Msg);
                 } else {
-                    emit sigDownloadFinished("已取消下载");
+                    emit sigDownloadFinished(Msg);
                 }
             },Qt::QueuedConnection);
 

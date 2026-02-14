@@ -84,6 +84,7 @@ Item {
                                     ASMRPlayer.set_page(1);
                                     console.log("点击"+audioPath)
                                     ASMRPlayer.set_path(audioPath.substring(1)+"/");
+                                    ASMRPlayer.pushHistory(audioPath.substring(1)+"/",1,1);
                                     leftbar.force_fresh=1
                                     leftbar.thisQml="qrc:/QML/content/Asmr_list.qml"     
                                     leftbar.current_list_view="ASMR"
@@ -144,7 +145,7 @@ Item {
                             Rectangle{
                                 id:dowloadShow
                                 property real dowloadprogress: listItem.downloadProgress
-                                color: "#826858"
+                                color: theme.dowloadColor
                                 opacity:0.8
                                 radius: 4
                                 anchors.left:parent.left

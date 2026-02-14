@@ -17,7 +17,7 @@ Item {
     property int page:1//当前页数
     property int totalpage:1//总页数
     property var pathParts
-    
+
     onFileChanged: {
         pathParts = Qt.binding(function() {
             if (!file) return ["主页"];
@@ -25,6 +25,7 @@ Item {
             parts.unshift("主页");
             return parts;
         });
+
     }
     //检测节目列表变化，并实时更新
     Connections {
@@ -42,9 +43,16 @@ Item {
         }
         function onTotalPageChanged(_page){
             asmr_list_body.totalpage=_page
+            ASMRPlayer.fixTotalHistory(totalpage)
         }
         function onCurrent_playing_changed(){
             asmr_list_body.currentPlaying=ASMRPlayer.get_current_playing();
+        }
+        function onSigFilePath(filepath){
+            file=filepath.file
+            ASMRPlayer.set_page(filepath.now_page);
+            totalpage=filepath.total_page
+            ASMRPlayer.asmr_list(file,false);
         }
     }
     SelectCollect{
@@ -60,7 +68,7 @@ Item {
         Layout.rightMargin: 20  
         anchors.leftMargin: 50
         //行布局
-        RowLayout {
+        Flow {
             id: pathNavigation
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
@@ -80,7 +88,9 @@ Item {
                 image_path:"qrc:/sources/image/箭头_上一页.svg"//箭头_下一页.svg
                 onClicked: {
                     if(asmr_list_body.page<=1){return;}
-                    ASMRPlayer.set_page(ASMRPlayer.get_page()-1);
+                    let _page=ASMRPlayer.get_page()-1;
+                    ASMRPlayer.set_page(_page);
+                    ASMRPlayer.fixHistory(_page);
                     ASMRPlayer.asmr_list(ASMRPlayer.get_path(), false)
                 }
             }
@@ -94,7 +104,9 @@ Item {
                 onClicked: {
                     if(asmr_list_body.page>=asmr_list_body.totalpage){return;}//当当前页数大于等于总页数就不能下一页
                     console.log("下一页")
-                    ASMRPlayer.set_page(ASMRPlayer.get_page()+1);
+                    let _page=ASMRPlayer.get_page()+1;
+                    ASMRPlayer.set_page(_page);
+                    ASMRPlayer.fixHistory(_page);
                     ASMRPlayer.asmr_list(ASMRPlayer.get_path(), false)
                 }
             }
@@ -121,6 +133,9 @@ Item {
                     onExited:{folderText.color=Qt.binding(function() { return theme.fontColor })}
                     onClicked: {
                         //回退目录时清空当前ui显示
+                        if(index===pathParts.length-1){
+                            return;
+                        }
                         listModel.clear();
                         var newPath = "";
                         for (var i = 0; i <= index; i++) {
@@ -136,9 +151,12 @@ Item {
                         if (index === 0) {
                             file = "";
                             ASMRPlayer.asmr_list("", false);//这里false显示说明不要加/后缀
+                            ASMRPlayer.pushHistory("/",1,1);
                         } else {
                             file = newPath;
                             ASMRPlayer.asmr_list(newPath,true);
+                            ASMRPlayer.pushHistory(newPath+"/",1,1);
+
                         }                  
                     }
                 }
@@ -202,12 +220,18 @@ Item {
                                     let next_path=ASMRPlayer.get_path() + model.name;
                                     ASMRPlayer.set_page(1);//set_page会自动刷新
                                     ASMRPlayer.asmr_list(next_path, true);
+                                    if(file){
+                                        ASMRPlayer.pushHistory(file,page,totalpage);
+                                    }else{
+                                        ASMRPlayer.pushHistory("",page,totalpage);
+                                    }
                                     return;
                                 }
                                 //检测到音频开始播放
 
                                 if(currentPlaying !== model.name){
                                     ASMRPlayer.get_sign_path("/" + ASMRPlayer.get_path()+model.name);
+                                    console.log("播放"+"/" + ASMRPlayer.get_path()+model.name)
                                 }
                                 currentPlaying = ASMRPlayer.get_path()+model.name
                                 ASMRPlayer.set_current_playing(currentPlaying)
@@ -257,7 +281,7 @@ Item {
                             Rectangle{
                                 id:dowloadShow
                                 property real dowloadprogress: listItem.downloadProgress
-                                color: "#826858"
+                                color: theme.dowloadColor
                                 opacity:0.8
                                 radius: 4
                                 anchors.left:parent.left
@@ -379,6 +403,8 @@ Item {
                 listModel.append({ name: nameList[i].name,is_dir: nameList[i].isDir});
             }
             asmrshow_list.contentY=0
+            asmr_list_body.totalpage=ASMRPlayer.get_totalpage()
+            asmr_list_body.page=ASMRPlayer.get_page()
         }
         file = ASMRPlayer.get_path()
         currentPlaying=ASMRPlayer.get_current_playing()

@@ -23,7 +23,7 @@ Item{
             {btnText:"tcp学习",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/TcpStudy.qml",isActive:false},
 			{btnText:"基础组件",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/BaseShow.qml",isActive:false},
             ],isActive:false,addAble:false},
-        {headerText:"收藏列表",btnData:[],isActive:true,addAble:true},
+        {headerText:"播放列表",btnData:[],isActive:true,addAble:true},
 		]
     property string current_list_view:"ASMR"//记录当前选择的选项
     property string collect_add_message:""//记录哪个收藏夹多了内容
@@ -57,7 +57,7 @@ Item{
 		let collectionBtnData = generateCollectionBtnData(collectionNames);
 		// 更新收藏列表的btnData
 		for (let i = 0; i < leftBarData.length; i++) {
-			if (leftBarData[i].headerText === "收藏列表") {
+            if (leftBarData[i].headerText === "播放列表") {
 				leftBarData[i].btnData = collectionBtnData;
 				break;
 			}
@@ -79,6 +79,9 @@ Item{
 	property int collect_fonts:10
 	property int fontSize:9
     property int force_fresh:0
+    onThisQmlChanged: {
+        topbar.history_show()
+    }
 	Connections {
         target: ASMRPlayer
 		function onCollectChanged(){
@@ -275,7 +278,7 @@ Item{
 										visible:false;
 										width:leftBar.btnWidth;
 										height:leftBar.btnHeight;
-										property string inputText: "新建收藏夹"
+                                        property string inputText: "新建播放列表"
 										property string placeholderText: "请输入收藏夹名称"	
 										// 防重复触发标记
 										property bool isConfirming: false
@@ -390,9 +393,6 @@ Item{
                                     if(modelData.addAble)ASMRPlayer.set_collect_file(modelData.btnText)
                                     if(leftBar.thisQml!==modelData.qml){
 										leftBar.thisQml=modelData.qml
-										topbar.history.push(modelData.qml)
-										topbar.now_pos++
-                                        //console.log("添加成功",topbar.history,topbar.now_pos)
 									}
 								}
 							}

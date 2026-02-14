@@ -47,13 +47,14 @@ Item {
                 height:slider.availableHeight
                 width:slider.availableWidth
                 radius:10
-                color:"white"
+                color:"gray"
+                opacity: theme.opacity
                 anchors.verticalCenter:parent.verticalCenter
                 Rectangle {
                     width: slider.visualPosition * parent.width
                     height: parent.height
                     color: theme.green
-                    radius: 2
+                    radius: 10
                 }
 
             }
@@ -61,9 +62,9 @@ Item {
                 anchors.verticalCenter:parent.verticalCenter
                 x: slider.visualPosition * (slider.availableWidth - width)
                 y: slider.availableHeight / 2 - height / 2
-                implicitWidth: 18
-                implicitHeight: 18
-                radius: 13
+                implicitWidth: 0
+                implicitHeight: 0
+                radius: width / 2
                 color: slider.pressed ? "#f0f0f0" : "#f6f6f6"
                 border.color: "#bdbebf"
             }

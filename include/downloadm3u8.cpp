@@ -78,13 +78,10 @@ void Downloadm3u8::stopMerge()
         }
     }
     m_runningReplies.clear();
-
-    // 清理缓存目录
-    QDir cacheDir(m_cacheDir);
-    if (cacheDir.exists()) {
-        cacheDir.removeRecursively();
-    }
-    emit mergeFinished(false, m_outputTsPath);
+    partCacheFiles();
+    // 合并完成后再清理资源
+    cleanResources();
+    emit mergeFinished(false, "已取消下载");
 }
 
 void Downloadm3u8::onReplyFinished(QNetworkReply *reply)
@@ -107,9 +104,10 @@ void Downloadm3u8::onReplyFinished(QNetworkReply *reply)
     if (reply->error() != QNetworkReply::NoError) {
         QString errorMsg = QString("分片%1下载失败：%2").arg(index).arg(reply->errorString());
         emit errorOccurred(errorMsg);
-        cleanResources();
-        emit mergeFinished(false, m_outputTsPath);
         reply->deleteLater();
+        if(m_runningReplies.isEmpty()){
+            emit mergeFinished(false, "部分资源不存在");
+        }
         return;
     }
 
@@ -119,9 +117,11 @@ void Downloadm3u8::onReplyFinished(QNetworkReply *reply)
     if (!file.open(QIODevice::WriteOnly)) {
         QString errorMsg = QString("分片%1缓存失败：无法打开文件 %2").arg(index).arg(cacheFile);
         emit errorOccurred(errorMsg);
-        cleanResources();
-        emit mergeFinished(false, m_outputTsPath);
         reply->deleteLater();
+        if(m_runningReplies.isEmpty()){
+            emit mergeFinished(false, "部分资源不存在");
+        }
+
         return;
     }
 
@@ -133,9 +133,10 @@ void Downloadm3u8::onReplyFinished(QNetworkReply *reply)
     if (written != tsData.size()) {
         QString errorMsg = QString("分片%1缓存失败：写入数据不完整").arg(index);
         emit errorOccurred(errorMsg);
-        cleanResources();
-        emit mergeFinished(false, m_outputTsPath);
         reply->deleteLater();
+        if(m_runningReplies.isEmpty()){
+            emit mergeFinished(false, "部分资源不存在");
+        }
         return;
     }
 
@@ -159,7 +160,7 @@ void Downloadm3u8::onReplyFinished(QNetworkReply *reply)
         } else {
             emit errorOccurred("分片合并失败");
         }
-        emit mergeFinished(true, m_outputTsPath);
+        emit mergeFinished(true, "下载完成");
     }
 
     reply->deleteLater();
@@ -207,6 +208,7 @@ bool Downloadm3u8::mergeCacheFiles()
         QFile inputFile(cacheFile);
         if (!inputFile.open(QIODevice::ReadOnly)) {
             qDebug() << "无法读取缓存文件：" << cacheFile;
+            outputFile.flush();
             outputFile.close();
             return false;
         }
@@ -216,6 +218,7 @@ bool Downloadm3u8::mergeCacheFiles()
         if (outputFile.write(data) != data.size()) {
             qDebug() << "写入分片" << i << "失败";
             inputFile.close();
+            outputFile.flush();
             outputFile.close();
             return false;
         }
@@ -228,6 +231,37 @@ bool Downloadm3u8::mergeCacheFiles()
 
 
     return true;
+}
+
+void Downloadm3u8::partCacheFiles(){
+    qDebug()<<"合并";
+    QFileInfo outputFileInfo(m_outputTsPath);
+    if (outputFileInfo.exists() && outputFileInfo.size() > 0) {
+        qDebug() << "目标文件已存在且非空，跳过合并：" << m_outputTsPath;
+        return;
+    }
+
+    QFile outputFile(m_outputTsPath);
+    if (!outputFile.open(QIODevice::WriteOnly)) {
+        qDebug() << "无法打开输出文件：" << outputFile.errorString();
+    }
+
+    // 按顺序合并所有缓存分片
+    for (int i = 0; i < m_tsUrlList.size(); i++) {
+        QString cacheFile = getCacheFilePath(i);
+        QFile inputFile(cacheFile);
+        if (!inputFile.open(QIODevice::ReadOnly)) {
+            qDebug() << "无法读取缓存文件：" << cacheFile;
+            return;
+        }
+
+        // 分片数据写入最终文件
+        QByteArray data = inputFile.readAll();
+        outputFile.write(data);
+        inputFile.close();
+    }
+    outputFile.flush();
+    outputFile.close();
 }
 
 void Downloadm3u8::parseM3U8(const QString &m3u8Content)
@@ -248,6 +282,7 @@ void Downloadm3u8::parseM3U8(const QString &m3u8Content)
 //清理所有缓存资源
 void Downloadm3u8::cleanResources()
 {
+    qDebug()<<"清理缓存";
     // 关闭并清理缓存目录
     QDir cacheDir(m_cacheDir);
     if (cacheDir.exists()) {

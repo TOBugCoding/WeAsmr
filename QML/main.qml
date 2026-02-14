@@ -3,13 +3,14 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QuickVLC
+import Qt.labs.platform
 
 import "components" as Components
 ApplicationWindow {
     id:mainWindow
     visible: true
     width: now_width;height: now_height
-    minimumWidth:720;minimumHeight:480
+    minimumWidth:800;minimumHeight:480
     //flags:Qt.Window|Qt.FramelessWindowHint|Qt.WindowStaysOnTopHint
     flags:Qt.Window|Qt.FramelessWindowHint
     //管理大小位置的重现
@@ -75,10 +76,38 @@ ApplicationWindow {
         anchors.bottom:parent.bottom
         ResizeHandle {
             rightEnabled: true
+            leftEnabled: true
             bottomEnabled:  true
             cornerEnabled:  true
         }
         z:2
+    }
+    SystemTrayIcon {
+        id:systemIcon
+        visible: true
+        icon.source: "qrc:/fonts/icon.ico"
+        tooltip: "ASMRMOON"
+        menu: Menu {
+            MenuItem {
+                icon.source: "qrc:/sources/image/感叹号.svg"
+                icon.mask: true
+                text: qsTr("退出ASMR")
+                onTriggered: Qt.quit()
+            }
+        }
+        onActivated:function(reason) {
+           if(reason===SystemTrayIcon.Trigger){
+               //检测隐藏
+               if(mainWindow.visibility===0){
+                    mainWindow.show()
+                    mainWindow.raise()
+                    mainWindow.requestActivate()
+                }
+                else{
+                    mainWindow.hide()
+                }
+           }
+       }
     }
     //全局抢夺焦点
     // MouseArea{
@@ -138,5 +167,15 @@ ApplicationWindow {
         to:1.0
         duration:200
         easing.type: Easing.OutCubic
+    }
+    Component.onCompleted: {
+        mainWindow.show()
+        mainWindow.raise()
+        mainWindow.requestActivate()
+    }
+    function raiseAndShowWindow(){
+        mainWindow.show()
+        mainWindow.raise()
+        mainWindow.requestActivate()
     }
 }

@@ -5,6 +5,7 @@ NetMusic::NetMusic(QObject* parent)
     , m_netManager(new QNetworkAccessManager(this))
     , m_currentReply(nullptr)
     , m_preReply(nullptr)
+    ,history(nullptr)
 {
     // QNetworkProxy proxy;
     // proxy.setType(QNetworkProxy::Socks5Proxy);
@@ -12,6 +13,8 @@ NetMusic::NetMusic(QObject* parent)
     // proxy.setPort(3080);                     // 代理端口
     // QNetworkProxy::setApplicationProxy(proxy);
     // 目前用的是Proxifier PE+meriru作为翻墙手段
+    history = new QList<FilePath>();
+    history->append(FilePath("",1,1));
     connect(m_netManager, &QNetworkAccessManager::finished, this, &NetMusic::onReplyFinished);
 }
 
@@ -23,11 +26,15 @@ NetMusic::~NetMusic()
         m_currentReply->abort();
         m_currentReply->deleteLater();
     }
+    if(history){
+        delete history;
+        history=nullptr;
+    }
 }
 //发起请求
 //接收 任意关键词
 void NetMusic::search_list(const QString keyword) {
-    std::unique_lock<std::mutex> lock(netlock);
+    //std::unique_lock<std::mutex> lock(netlock);
     replymode = netType::search_list_type;
     QUrl url("https://asmrmoon.com/api/fs/search");
     QNetworkRequest request(url);
@@ -93,14 +100,14 @@ void NetMusic::net_search_list(QNetworkReply* reply) {
 // 发送 中文音声/婉儿别闹/  字样，实际请求是/中文音声/婉儿别闹,前面的/由前端添加
 void NetMusic::asmr_list(const QString& path,bool needAdd)
 {
-    std::unique_lock<std::mutex> lock(netlock);
+    //std::unique_lock<std::mutex> lock(netlock);
     replymode = netType::asmr_list_type;
     QString target_path = path;
     current_url = path;
     if (needAdd) {
         current_url +="/";
     }
-    qDebug()<<"程序记录路径"<<current_url;
+    qDebug()<<"程序记录路径是"<<current_url;
     QUrl url("https://asmrmoon.com/api/fs/list");
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
@@ -220,12 +227,12 @@ void NetMusic::set_page(int page) {
 void NetMusic::collect_audio(QString path, QString audioName) {
     qDebug() << "收藏处理中" << path << audioName;
 
-    // 1. 初始化JSON数据容器
+    // 初始化JSON数据容器
     QJsonArray collectionArray;
     QFile jsonFile(COLLECTION_JSON_PATH);
     bool fileExists = jsonFile.exists();
 
-    // 2. 读取现有JSON文件（如果存在）
+    // 读取现有JSON文件（如果存在）
     if (fileExists) {
         if (!jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             qWarning() << "无法打开收藏JSON文件：" << jsonFile.errorString();
@@ -251,7 +258,7 @@ void NetMusic::collect_audio(QString path, QString audioName) {
         }
     }
 
-    // 3. 查找目标收藏夹（默认收藏夹）
+    // 查找目标收藏夹（默认收藏夹）
     QJsonObject targetFolder;
     int targetIndex = -1;
     for (int i = 0; i < collectionArray.size(); ++i) {
@@ -266,12 +273,12 @@ void NetMusic::collect_audio(QString path, QString audioName) {
         }
     }
 
-    // 4. 处理目标收藏夹（创建/更新）
+    // 处理目标收藏夹（创建/更新）
     QJsonArray audioList;
     int audioCount = 0;
 
     if (targetIndex != -1) {
-        // 4.1 存在该收藏夹，读取现有音频列表
+        // 存在该收藏夹，读取现有音频列表
         audioList = targetFolder["audio_list"].toArray();
         audioCount = targetFolder["num"].toInt();
 
@@ -290,7 +297,7 @@ void NetMusic::collect_audio(QString path, QString audioName) {
         audioCount = audioList.size(); // 更新数量（确保与列表长度一致）
     }
     else {
-        // 4.2 不存在该收藏夹，创建新条目
+        // 不存在该收藏夹，创建新条目
         audioList.append(audioName);
         audioCount = 1; // 初始数量为1
 
@@ -302,14 +309,14 @@ void NetMusic::collect_audio(QString path, QString audioName) {
         collectionArray.append(targetFolder);
     }
 
-    // 5. 更新现有收藏夹的音频列表和数量（如果是已有收藏夹）
+    // 更新现有收藏夹的音频列表和数量（如果是已有收藏夹）
     if (targetIndex != -1) {
         targetFolder["audio_list"] = audioList;
         targetFolder["num"] = audioCount;
         collectionArray.replace(targetIndex, targetFolder);
     }
 
-    // 6. 将更新后的数据写入JSON文件
+    // 将更新后的数据写入JSON文件
     QJsonDocument newJsonDoc(collectionArray);
     if (!jsonFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
         qWarning() << "无法写入收藏JSON文件：" << jsonFile.errorString();
@@ -431,7 +438,7 @@ void NetMusic::load_audio(QString path)
     // 初始化空列表（兜底）
     QList<QString> audioList;
 
-    // 1. 检查JSON文件是否存在
+    // 检查JSON文件是否存在
     QFile jsonFile(COLLECTION_JSON_PATH);
     if (!jsonFile.exists()) {
         qWarning() << "收藏JSON文件不存在：" << COLLECTION_JSON_PATH;
@@ -439,7 +446,7 @@ void NetMusic::load_audio(QString path)
         return;
     }
 
-    // 2. 打开并读取JSON文件
+    // 打开并读取JSON文件
     if (!jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qWarning() << "无法打开收藏JSON文件：" << jsonFile.errorString();
         emit collectCompelet(audioList);
@@ -449,7 +456,7 @@ void NetMusic::load_audio(QString path)
     QByteArray jsonData = jsonFile.readAll();
     jsonFile.close();
 
-    // 3. 解析JSON数据
+    // 解析JSON数据
     QJsonParseError parseError;
     QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData, &parseError);
     if (parseError.error != QJsonParseError::NoError) {
@@ -464,7 +471,7 @@ void NetMusic::load_audio(QString path)
         return;
     }
 
-    // 4. 遍历收藏夹数组，查找目标收藏夹
+    // 遍历收藏夹数组，查找目标收藏夹
     QJsonArray collectionArray = jsonDoc.array();
     for (const QJsonValue& itemValue : collectionArray) {
         if (!itemValue.isObject()) {
@@ -484,7 +491,7 @@ void NetMusic::load_audio(QString path)
         }
     }
 
-    // 6. 发送加载完成信号（无论是否找到，都发送列表，空列表表示无数据）
+    // 发送加载完成信号（无论是否找到，都发送列表，空列表表示无数据）
     audioList.sort();
     collect_audio_list=audioList;
     //qDebug()<<"列表"<<collect_audio_list;
@@ -520,14 +527,14 @@ QList<QString> NetMusic::get_all_collections()
     if (!jsonFile.exists()) {
         qWarning() << "收藏JSON文件不存在，返回空收藏夹列表";
         // 若文件不存在，返回默认收藏夹（保证基础数据）
-        collectionNames << "默认收藏夹";
+        collectionNames << "默认播放列表";
         return collectionNames;
     }
 
     // 2. 打开并读取JSON文件
     if (!jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qWarning() << "无法打开收藏JSON文件：" << jsonFile.errorString();
-        collectionNames << "默认收藏夹";
+        collectionNames << "默认播放列表";
         return collectionNames;
     }
 
@@ -539,13 +546,13 @@ QList<QString> NetMusic::get_all_collections()
     QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData, &parseError);
     if (parseError.error != QJsonParseError::NoError) {
         qWarning() << "JSON解析错误：" << parseError.errorString();
-        collectionNames << "默认收藏夹";
+        collectionNames << "默认播放列表";
         return collectionNames;
     }
 
     if (!jsonDoc.isArray()) {
         qWarning() << "JSON格式错误，预期为数组类型";
-        collectionNames << "默认收藏夹";
+        collectionNames << "默认播放列表";
         return collectionNames;
     }
 
@@ -563,7 +570,7 @@ QList<QString> NetMusic::get_all_collections()
 
     // 5. 兜底：若无任何收藏夹，添加默认收藏夹
     if (collectionNames.isEmpty()) {
-        collectionNames << "默认收藏夹";
+        collectionNames << "默认播放列表";
     }
 
     qDebug() << "获取收藏夹列表成功，数量：" << collectionNames.size() << "列表：" << collectionNames;
@@ -779,10 +786,8 @@ QString NetMusic::get_audioName(){
         }
 
     }
-    //从头开始播放
-    qDebug()<<"下一首播放"<<collect_audio_list[0];
-    set_current_playing(collect_audio_list[0]);
-    return collect_audio_list[0];
+    set_current_playing("");
+    return "";
 
 }
 
@@ -871,4 +876,48 @@ void NetMusic::download_sign_path(const QString path){
 
 QString NetMusic::get_sign_record(){
     return sign_record;
+}
+
+
+void NetMusic::pushHistory(const QString&file,int page,int total){
+    if(history){
+        if(currentFilePathIndex!=history->size()-1){
+            ++currentFilePathIndex;
+            history->replace(currentFilePathIndex, FilePath(file,page,total));
+            qDebug()<<"添加"<<file<<current_page<<total_page;
+        }else{
+            history->append(FilePath(file,page,total));
+            currentFilePathIndex = history->size() - 1;
+            qDebug()<<"添加"<<file<<current_page<<total_page;
+        }
+
+    }else{
+        qDebug()<<"point empty";
+    }
+}
+void NetMusic::fixHistory(int page){
+    FilePath targetItem = history->at(currentFilePathIndex); // 取出当前索引的对象
+    targetItem.now_page = page; // 修改页数
+    history->replace(currentFilePathIndex, targetItem); // 替换回列表
+}
+void NetMusic::fixTotalHistory(int totalpage){
+    FilePath targetItem = history->at(currentFilePathIndex); // 取出当前索引的对象
+    targetItem.total_page = totalpage; // 修改页数
+    history->replace(currentFilePathIndex, targetItem); // 替换回列表
+}
+//回滚历史，有返回
+void NetMusic::backHistory(){
+    if(currentFilePathIndex!=0){
+        --currentFilePathIndex;
+        emit sigFilePath(history->at(currentFilePathIndex));
+    }
+
+}
+//前进历史，有返回
+void NetMusic::forwardHistory(){
+    if(currentFilePathIndex!=history->size()-1){
+        ++currentFilePathIndex;
+        emit sigFilePath(history->at(currentFilePathIndex));
+    }
+
 }
