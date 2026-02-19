@@ -10,7 +10,7 @@ ApplicationWindow {
     id:mainWindow
     visible: true
     width: now_width;height: now_height
-    minimumWidth:800;minimumHeight:480
+    minimumWidth:960;minimumHeight:600
     //flags:Qt.Window|Qt.FramelessWindowHint|Qt.WindowStaysOnTopHint
     flags:Qt.Window|Qt.FramelessWindowHint
     //管理大小位置的重现
@@ -63,7 +63,8 @@ ApplicationWindow {
                 leftbar.anchors.top=topbar.anchors.top;leftbar.left_btn_list.visible=false
             }else{
                 topbar.opacity=1
-                leftbar.anchors.top=topbar.bottom;leftbar.left_btn_list.visible=true
+                leftbar.anchors.top=topbar.bottom
+                leftbar.left_btn_list.visible=true
             }
         }
     }

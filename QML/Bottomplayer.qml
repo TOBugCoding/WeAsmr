@@ -25,6 +25,9 @@ Item{
             pauseAnim.stop()
             mediaPlayer.play()
         }
+        onStopped: {
+            //audioOutput.volume=Qt.binding(function() { return playbackController.volume })
+        }
     }
     NumberAnimation{
         id:pauseAnim
@@ -39,19 +42,36 @@ Item{
         }
         onStopped: {
             mediaPlayer.pause()
+            //audioOutput.volume=Qt.binding(function() { return playbackController.volume })
         }
     }
     Item{
+        id:video_parent
         anchors.fill: parent
+
         Rectangle{
-            color: root.fullscreen?theme.contentColor:"#00000000"
+            color: topbar.fullscreen?theme.contentColor:"#00000000"
             anchors.fill: parent
         }
         VideoOutput {
             id: output
-            anchors.fill: parent
+            anchors.left:parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: topbar.fullscreen?parent.height:parent.height-10
+
+            Behavior on height {
+                NumberAnimation {
+                    duration: 300
+                    easing.type: Easing.InOutQuad
+                }
+            }
+            onHeightChanged: {
+
+            }
             source: mediaPlayer
             z:1
+            visible: false
         }
         Item {
             z:2
@@ -122,9 +142,17 @@ Item{
         onEntered: {  // 新增：鼠标进入时强制重置状态
             inactiveMouse = false
             timer.restart()
+            if(output.visible===true){
+                playbackController.slider_bg=theme.opacity
+                //output.height=Qt.binding(function() { return topbar.fullscreen?video_parent.height:video_parent.height-30 })
+            }
         }
         onExited: {  // 新增：鼠标离开时重置状态
             inactiveMouse = true
+            if(output.visible===true){
+                playbackController.slider_bg=0
+                //output.height=Qt.binding(function() { return topbar.fullscreen?video_parent.height:video_parent.height })
+            }
         }
         onDoubleClicked: mouse => mouse.accepted = false
 
@@ -168,9 +196,7 @@ Item{
         onActivated: {
             const pos = Math.min(mediaPlayer.duration, mediaPlayer.position + 10000)
             mediaPlayer.position = pos
-
         }
-
         enabled: mediaPlayer.duration > 0
     }
 
@@ -226,8 +252,11 @@ Item{
         volume: playbackController.volume
         muted: playbackController.muted
         Component.onCompleted: {
-            audioOutput.volume=playbackController.volume
+            audioOutput.volume=Qt.binding(function() { return playbackController.volume })
         }
+        // onVolumeChanged: {
+        //     console.log("音量改变")
+        // }
 
     }
     function next_audio_play(){
@@ -248,14 +277,17 @@ Item{
             audioOutput.volume=playbackController.volume
             if(path.toString().includes(".m3u8")||path.toString().includes(".ts")){
                 output.visible = true
+                playbackController.slider_bg=0
             } else {
-               output.visible = false
+                output.visible = false
+                playbackController.slider_bg=theme.opacity
             }
             mediaPlayer.stop()
             mediaPlayer.source = path
             mediaPlayer.play()
             systemIcon.tooltip=ASMRPlayer.get_current_playing()
             loadingOverlay.visible=true
+            audioOutput.volume=Qt.binding(function() { return playbackController.volume })
         }
         function onDownloadPathReceived(path){
             //执行下载任务
@@ -272,6 +304,7 @@ Item{
             audioOutput.volume=playbackController.volume
             mediaPlayer.source = content
             output.visible = true
+            playbackController.slider_bg=0
             systemIcon.tooltip=ASMRPlayer.get_current_playing()
             loadingOverlay.visible=true
             //console.log(content)

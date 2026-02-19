@@ -38,7 +38,7 @@ public:
             }
             QString fileName = newUrl.fileName();
             QString downloadDir = QCoreApplication::applicationDirPath() + "/download/";
-            QString fullFilePath = downloadDir + fileName;
+            //QString fullFilePath = downloadDir + fileName;
 
             // 调用自定义函数，判断是否存在同名（忽略后缀）的文件
             if (isSameFileNameExists(downloadDir, fileName)) {
@@ -120,7 +120,8 @@ public:
 
         // 格式统一
         path = path.trimmed();
-        path = path.remove(QRegularExpression("^/+|/+$"));
+        static const QRegularExpression trimSlashesRegex("^/+|/+$");
+        path = path.remove(trimSlashesRegex);
         if (!path.isEmpty() && !path.startsWith("/")) {
             path = "/" + path;
         }
@@ -157,7 +158,8 @@ private:
             return true;
         }
         // 查任务容器
-        for (DowloadItem* item : DowloadContainer) {
+        for (auto it = DowloadContainer.constBegin(); it != DowloadContainer.constEnd(); ++it) {
+            DowloadItem* item = *it;
             if (item->corePath == corePath) {
                 return true;
             }

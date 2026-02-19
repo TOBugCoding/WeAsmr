@@ -7,7 +7,7 @@ Item {
     id: seekController
     required property MediaPlayer mediaPlayer
     property alias busy: slider.pressed
-
+    property alias color_slider:silider_bg.opacity
     implicitHeight: 20
 
     function formatToMinutes(milliseconds) {
@@ -37,26 +37,43 @@ Item {
         Slider {
             id: slider
             Layout.fillWidth: true
-            implicitHeight:20
-          
+            implicitHeight:21
             enabled: seekController.mediaPlayer.seekable
             value: seekController.mediaPlayer.position / seekController.mediaPlayer.duration
-            
             onMoved: seekController.mediaPlayer.position=(value * seekController.mediaPlayer.duration)
             background:Rectangle{
+                id:silider_bg
                 height:slider.availableHeight
                 width:slider.availableWidth
                 radius:10
                 color:"gray"
                 opacity: theme.opacity
                 anchors.verticalCenter:parent.verticalCenter
+                MouseArea {
+                    enabled: seekController.mediaPlayer.seekable
+                    anchors.fill: parent
+                    hoverEnabled: true
+
+                    onPositionChanged: function(mouse){
+                        //console.log((mouse.x/width)* seekController.mediaPlayer.duration);
+                        const hoverRatio = Math.max(0, Math.min(1, mouse.x / slider.availableWidth));
+                        const targetMs = hoverRatio * seekController.mediaPlayer.duration;
+                        currentTime.text = seekController.formatToMinutes(targetMs);
+                        currentTime.color = theme.green
+                        //currentTime.text=seekController.formatToMinutes((mouse.x/width)* seekController.mediaPlayer.duration)
+                    }
+                    onExited: {
+                        currentTime.text=Qt.binding(function() { return seekController.formatToMinutes(seekController.mediaPlayer.position) })
+                        currentTime.color=Qt.binding(function() { return theme.fontColor })
+                    }
+
+                }
                 Rectangle {
                     width: slider.visualPosition * parent.width
                     height: parent.height
                     color: theme.green
                     radius: 10
                 }
-
             }
             handle: Rectangle {
                 anchors.verticalCenter:parent.verticalCenter

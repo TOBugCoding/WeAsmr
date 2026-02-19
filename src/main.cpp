@@ -8,6 +8,7 @@
 #include "CursorPosProvider.h"
 #include "netMusic.h"
 #include "DownloadToolMgr.h"
+#include "configMgr.h"
 
 int main(int argc, char* argv[])
 {
@@ -46,15 +47,12 @@ int main(int argc, char* argv[])
     DownloadToolMgr dowloadmgr;
     //注册单例，全局调用，避免深度过深导致访问不到
     NetMusic asmr_player;
-    qmlRegisterSingletonInstance<NetMusic>(
-        "com.asmr.player",  // 模块名
-        1, 0,               // 版本号
-        "ASMRPlayer",       // QML 中访问的名称
-        &asmr_player        // 实例指针
-    );
+    qmlRegisterSingletonInstance<NetMusic>("com.asmr.player",1, 0, "ASMRPlayer",&asmr_player);
 
     QQmlApplicationEngine engine;
     CursorPosProvider mousePosProvider;
+    configMgr cfgMgr;
+    engine.rootContext()->setContextProperty("configMgr", &cfgMgr);
     engine.rootContext()->setContextProperty("mousePosition", &mousePosProvider);
     engine.rootContext()->setContextProperty("dowloadmgr", &dowloadmgr);
     engine.rootContext()->setContextProperty("appDir", qApp->applicationDirPath());

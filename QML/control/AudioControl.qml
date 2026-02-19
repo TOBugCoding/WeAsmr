@@ -49,7 +49,7 @@ Item {
             id: slider
             visible: !audioController.showSlider
             implicitWidth: audioController.slider_duraiton
-            implicitHeight:20
+            implicitHeight:18
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             enabled: !audioController.muted
@@ -72,10 +72,10 @@ Item {
                 anchors.verticalCenter:parent.verticalCenter
                 x: slider.visualPosition * (slider.availableWidth - width)
                 y: slider.availableHeight / 2 - height / 2
-                implicitWidth: 18
-                implicitHeight: 18
-                radius: 13
-                color: slider.pressed ? "#f0f0f0" : "#f6f6f6"
+                implicitWidth: 14
+                implicitHeight: 14
+                radius: width/2
+                color: theme.green
                 border.color: "#bdbebf"
             }
         }

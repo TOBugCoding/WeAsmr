@@ -72,7 +72,7 @@ void Downloadm3u8::stopMerge()
     m_isStopped = true;
 
     // 取消所有正在运行的请求
-    for (QNetworkReply *reply : m_runningReplies) {
+    for (QNetworkReply *reply : std::as_const(m_runningReplies)) {
         if (reply && !reply->isFinished()) {
             reply->abort();
         }
@@ -97,6 +97,9 @@ void Downloadm3u8::onReplyFinished(QNetworkReply *reply)
     // 处理停止状态
     if (m_isStopped) {
         reply->deleteLater();
+        if(m_runningReplies.isEmpty()){
+            emit mergeFinished(false, "目标资源不完整");
+        }
         return;
     }
 
@@ -105,9 +108,7 @@ void Downloadm3u8::onReplyFinished(QNetworkReply *reply)
         QString errorMsg = QString("分片%1下载失败：%2").arg(index).arg(reply->errorString());
         emit errorOccurred(errorMsg);
         reply->deleteLater();
-        if(m_runningReplies.isEmpty()){
-            emit mergeFinished(false, "部分资源不存在");
-        }
+        m_isStopped=true;
         return;
     }
 

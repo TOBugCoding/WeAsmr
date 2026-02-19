@@ -182,8 +182,9 @@ Item {
         ListView {
             id: asmrshow_list
             width: parent.width
-            height: parent.height
+            height: parent.height-50
             //clip: true // 开启裁剪，避免放大内容超出列表
+            acceptedButtons:Qt.NoButton
             ScrollBar.vertical:ScrollBar{
                 anchors.right: parent.right
                 width:13

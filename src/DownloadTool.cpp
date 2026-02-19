@@ -164,7 +164,7 @@ void DownloadTool::httpFinished()
                 m3u8File.close();
                 QStringList m3u8Lines = m3u8Content.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts);
                 QStringList newM3u8Lines;
-                for (const QString& line : m3u8Lines) {
+                for (const QString& line : std::as_const(m3u8Lines)) {
                     QString trimmedLine = line.trimmed();
                     // 注释行/空行直接保留，不处理
                     if (trimmedLine.startsWith("#") || trimmedLine.isEmpty()) {
@@ -173,7 +173,7 @@ void DownloadTool::httpFinished()
                         // 核心逻辑：按/拆分路径分段，避免层级破坏
                         QStringList pathSegments = trimmedLine.split("/");
                         QStringList handledSegments;
-                        for (const QString& segment : pathSegments) {
+                        for (const QString& segment : std::as_const(pathSegments)) {
                             QString handledSegment = segment; // 先创建副本，避免修改原始segment
                             handledSegment.replace(" ", "%20"); // 对副本原地替换，仅改空格
                             handledSegments << handledSegment;

@@ -78,11 +78,12 @@ void NetMusic::net_search_list(QNetworkReply* reply) {
         QJsonObject rootObj = jsonDoc.object();
         QJsonObject dataObj = rootObj["data"].toObject();
         QJsonArray contentArray = dataObj["content"].toArray();
-        for (const QJsonValue& val : contentArray) {
+        for (const QJsonValue& val : std::as_const(contentArray)) {
             if (val.isObject()) {
-                QString parent = val.toObject()["parent"].toString();
-                QString name = val.toObject()["name"].toString();
-                bool isdir = val.toObject()["is_dir"].toBool();
+                const QJsonObject obj = val.toObject();
+                const QString parent = obj.value("parent").toString();
+                const QString name = obj.value("name").toString();
+                const bool isdir = obj.value("is_dir").toBool();
                 nameList.append(AsmrItem(parent+"/" + name,isdir));
             }
         }
@@ -155,10 +156,10 @@ void NetMusic::net_asmr_list(QNetworkReply* reply) {
         emit totalPageChanged(total_page);
         QJsonArray contentArray = dataObj["content"].toArray();
 
-        for (const QJsonValue& val : contentArray) {
+        for (const QJsonValue& val : std::as_const(contentArray)) {
             if (val.isObject()) {
-                QString name = val.toObject()["name"].toString();
-                bool isdir= val.toObject()["is_dir"].toBool();
+                QString name = val.toObject().value("name").toString();
+                bool isdir= val.toObject().value("is_dir").toBool();
                 if (name == "README.md") { continue; }//去除readme文件
                 nameList.append(AsmrItem(name, isdir));
             }
@@ -284,7 +285,7 @@ void NetMusic::collect_audio(QString path, QString audioName) {
 
         // 检查音频是否已存在（避免重复添加）
         bool isExisted = false;
-        for (const QJsonValue& audioVal : audioList) {
+        for (const QJsonValue& audioVal : std::as_const(audioList)) {
             if (audioVal.toString() == audioName) {
                 isExisted = true;
                 qDebug() << "音频已存在于收藏夹：" << audioName;
@@ -389,7 +390,7 @@ void NetMusic::dislike_collect_audio(QString path, QString audioName) {
     QJsonArray audioList = targetFolder["audio_list"].toArray();
     QJsonArray newAudioList; // 存储移除后的音频列表
 
-    for (const QJsonValue& audioVal : audioList) {
+    for (const QJsonValue& audioVal : std::as_const(audioList)) {
         // 跳过要取消收藏的音频，其余保留
         if (audioVal.toString() != audioName) {
             newAudioList.append(audioVal);
@@ -431,7 +432,7 @@ void NetMusic::dislike_collect_audio(QString path, QString audioName) {
     qDebug() << "取消收藏成功！收藏夹：" << path << " 剩余音频数：" << newAudioList.size();
 }
 
-void NetMusic::load_audio(QString path)
+void NetMusic::load_audio(QString path,bool asencd)
 {
     qDebug() << "加载收藏夹音频：" << path;
 
@@ -473,7 +474,7 @@ void NetMusic::load_audio(QString path)
 
     // 遍历收藏夹数组，查找目标收藏夹
     QJsonArray collectionArray = jsonDoc.array();
-    for (const QJsonValue& itemValue : collectionArray) {
+    for (const QJsonValue& itemValue : std::as_const(collectionArray)) {
         if (!itemValue.isObject()) {
             continue;
         }
@@ -483,7 +484,7 @@ void NetMusic::load_audio(QString path)
         if (folderPath == path) { // 匹配目标收藏夹名称
             // 5. 提取音频列表
             QJsonArray audioJsonArray = itemObj["audio_list"].toArray();
-            for (const QJsonValue& audioVal : audioJsonArray) {
+            for (const QJsonValue& audioVal : std::as_const(audioJsonArray)) {
                 audioList.append(audioVal.toString());
             }
             qDebug() << "成功加载收藏夹[" << path << "]的音频，数量：" << audioList.size();
@@ -492,7 +493,9 @@ void NetMusic::load_audio(QString path)
     }
 
     // 发送加载完成信号（无论是否找到，都发送列表，空列表表示无数据）
-    audioList.sort();
+    if(asencd){
+        audioList.sort();
+    }
     collect_audio_list=audioList;
     //qDebug()<<"列表"<<collect_audio_list;
     emit collectCompelet(audioList);
@@ -558,7 +561,7 @@ QList<QString> NetMusic::get_all_collections()
 
     // 4. 提取所有收藏夹的path字段
     QJsonArray collectionArray = jsonDoc.array();
-    for (const QJsonValue& itemValue : collectionArray) {
+    for (const QJsonValue& itemValue : std::as_const(collectionArray)) {
         if (itemValue.isObject()) {
             QJsonObject itemObj = itemValue.toObject();
             QString folderName = itemObj["path"].toString().trimmed();
@@ -743,7 +746,7 @@ bool NetMusic::delete_collection(QString folderName)
     QJsonDocument newJsonDoc(collectionArray);
     // 格式化写入（保留缩进，支持中文，避免乱码）
     QByteArray writeData = newJsonDoc.toJson(QJsonDocument::Indented);
-    qint64 writeSize = jsonFile.write(writeData);
+    jsonFile.write(writeData);
     jsonFile.close();
 
     qInfo() << "[删除收藏夹] 成功：收藏夹" << folderName << "已删除，剩余收藏夹数量：" << collectionArray.size();

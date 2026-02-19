@@ -63,10 +63,20 @@ Item {
         Item{
             anchors.fill:parent
             Text{id:collect_title;text:collectPage.currentCollectFile;color:theme.fontColor;font.pointSize:25}
-   
+            HoverButton{
+                id:sequence_btn
+                anchors.top:collect_title.bottom
+                anchors.topMargin:20
+                image_path:"qrc:/sources/image/调整顺序.svg";
+                onClicked:{
+                    ASMRPlayer.load_audio(ASMRPlayer.get_collect_file(),true);
+                }
+            }
             HoverButton{
                 anchors.top:collect_title.bottom
                 anchors.topMargin:20
+                anchors.left:sequence_btn.right
+                anchors.leftMargin: 20
                 image_path:"qrc:/sources/image/垃圾桶.svg";
                 onClicked:{
                     collectDetail.text="确认要删除吗"
@@ -76,27 +86,28 @@ Item {
                     collectDetail.open()
                 }
             }
-            
-          
+
+
         }
     }
     Item {
         anchors.top: titlehead.bottom
+        anchors.topMargin: 20
         anchors.left: parent.left
         anchors.leftMargin:50
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        
+
         ListView {
             id: asmrshow_list
             width: parent.width
-            height: parent.height
+            height: parent.height-50
             //clip: true // 开启裁剪，避免放大内容超出列表
             ScrollBar.vertical:ScrollBar{
                 anchors.right: parent.right
                 width:13
             }
-            model: ListModel { 
+            model: ListModel {
                 id: audioListModel
                 onCountChanged: {
                     loadingOverlay.visible = (count === 0);
@@ -113,7 +124,7 @@ Item {
                     anchors.fill: parent
                     transformOrigin: Item.Center
                     scale: 1.0 // 默认缩放比例
-                    
+
                     // 背景容器（当前播放项高亮）
                     Item {
                         anchors.fill: parent
@@ -124,7 +135,7 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                const name = String(model.name); 
+                                const name = String(model.name);
                                 if(name.indexOf(".") === -1){
                                     return;
                                 }
@@ -140,14 +151,14 @@ Item {
                                 if (!scaleGrowAnim.running) scaleGrowAnim.start()
                                 bgRect.color=theme.fontColor
                             }
-                        
+
                             // 悬停离开：启动恢复动画
                             onExited: {
                                 if (scaleGrowAnim.running) scaleGrowAnim.stop()
                                 if (!scaleRestoreAnim.running) scaleRestoreAnim.start()
                                 bgRect.color="#00000000"
                             }
-                        
+
                             // 放大动画（缩放比例从1→1.02）
                             PropertyAnimation {
                                 id: scaleGrowAnim
@@ -158,7 +169,7 @@ Item {
                                 duration: 200
                                 easing.type: Easing.OutQuad
                             }
-                        
+
                             // 恢复动画（缩放比例回到1）
                             PropertyAnimation {
                                 id: scaleRestoreAnim

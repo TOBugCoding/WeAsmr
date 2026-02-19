@@ -71,7 +71,7 @@ public:
     //加载收藏列表
     //param:
     //path:所属收藏夹
-    Q_INVOKABLE void load_audio(QString path);
+    Q_INVOKABLE void load_audio(QString path,bool asencd=false);
     //提取所有path键
     Q_INVOKABLE QList<QString> get_all_collections();
     //增加收藏夹 数据保存到json

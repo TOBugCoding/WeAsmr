@@ -18,11 +18,8 @@ Item{
 			{btnText:"关于我",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/Aboutme.qml",isActive:true},
 			],isActive:true,addAble:false},
 		{headerText:"测试模块",btnData:[
-			{btnText:"学习",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/Study.qml",isActive:true},
-			{btnText:"转中文",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/NumberToChinese.qml",isActive:false},
-            {btnText:"tcp学习",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/TcpStudy.qml",isActive:false},
-			{btnText:"基础组件",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/content/BaseShow.qml",isActive:false},
-            ],isActive:false,addAble:false},
+            {btnText:"学习",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/Test.qml",isActive:true},
+            ],isActive:false,addAble:true},
         {headerText:"播放列表",btnData:[],isActive:true,addAble:true},
 		]
     property string current_list_view:"ASMR"//记录当前选择的选项
@@ -143,15 +140,29 @@ Item{
 			width: leftBar.btnWidth*1.5
             height: parent.height
 			visible: true
-
+            NumberAnimation{
+                id:left_btn_list_visible_anim
+                target: left_btn_list
+                property: "width"
+                from: 0
+                to:left_btn_list.width
+                duration: 300
+                easing.type: Easing.InQuad
+            }
+            onVisibleChanged: {
+                if(visible){
+                    left_btn_list_visible_anim.start()
+                }
+            }
 			Rectangle{
 				anchors.fill:parent
 				color:theme.leftBarColor
                 opacity:theme.opacity
+                bottomLeftRadius: 15
 			}
 			MouseArea {
 				width: parent.width
-				height: parent.height
+                height: parent.height
 				hoverEnabled: true
 				onEntered: {
 					ver_bar.opacity = 1
@@ -168,7 +179,7 @@ Item{
 					contentHeight: leftColumn.implicitHeight
 					boundsBehavior: Flickable.StopAtBounds
 					clip: true
-                    //acceptedButtons:Qt.NoButton
+                    acceptedButtons:Qt.NoButton
 					leftMargin:30
 					ScrollBar.vertical:ScrollBar{
 						id:ver_bar
@@ -413,6 +424,7 @@ Item{
 				color: theme.contentColor
 				anchors.fill:parent
                 opacity:theme.opacity
+                bottomRightRadius: 15
 			}
 			Column{
 				id:right_content

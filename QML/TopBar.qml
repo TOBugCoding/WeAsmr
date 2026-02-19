@@ -94,6 +94,7 @@ Item {
                     anchors.fill:parent
                     color: theme.leftBarColor
                     opacity: theme.opacity
+                    topLeftRadius: 15
                 }
                 Row{
                     anchors.centerIn:parent
@@ -115,6 +116,7 @@ Item {
                     anchors.fill:parent
                     color: theme.contentColor //Theme在main.cpp里声明了id
                     opacity:theme.opacity
+                    topRightRadius:15
                 }
                 RowLayout{
                     spacing:15
@@ -181,7 +183,7 @@ Item {
                     HoverButton{
                         id:skin_btn
                         image_path:"qrc:/sources/image/皮肤.svg"
-                        onClicked:{console.log("弹出滑动条，调整透明度");opacity_mng.visible=true}
+                        onClicked:{console.log("弹出滑动条，调整透明度");opacity_mng.visible=!opacity_mng.visible}
                         Rectangle{
                             id:opacity_mng
                             anchors.top:parent.bottom
@@ -202,6 +204,10 @@ Item {
                                 to:0.2
                                 stepSize:0.1
                                 orientation:Qt.Vertical
+                                Component.onCompleted: {
+                                    var themeCfg = configMgr.getThemeConfig();
+                                    opacity_body.value=themeCfg.opacity;
+                                }
                                 onValueChanged:{
                                     theme.opacity=value
                                 }

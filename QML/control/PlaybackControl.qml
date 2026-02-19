@@ -8,6 +8,7 @@ import QuickVLC
 import QtQuick.Dialogs
 import QtQuick.Controls.Basic
 import "../"
+import com.asmr.player 1.0
 Item {
     id: playbackController
 
@@ -17,11 +18,15 @@ Item {
     property alias muted: audioControl.muted
     property alias volume: audioControl.volume
     property alias loop: loopButton.loops
-    //监听主界面高度 如果处于全屏就同步
-    property var mainheight:mainWindow.contentItem.height
-    onMainheightChanged:{
-        if(topbar.fullscreen){playbackController.bottomplayerHeight=mainWindow.contentItem.height}
+    property alias slider_bg:playbackSeekControl.color_slider
+    // 监听主界面高度 如果处于全屏就同步
+    property var mainheight: mainWindow.contentItem.height
+    onMainheightChanged: {
+        if (topbar.fullscreen) {
+            playbackController.bottomplayerHeight = mainWindow.contentItem.height
+        }
     }
+
     // 取消横屏/竖屏布局切换（简化逻辑，保持统一紧凑布局）
     property bool landscapePlaybackControls: true // 强制横屏布局（更适合底部固定显示）
     property bool busy: fileDialog.visible
@@ -30,30 +35,45 @@ Item {
                         || playbackSeekControl.busy
 
     // 紧凑化高度（适配底部固定显示）
-    implicitHeight: 90 // 原 168/208 → 大幅压缩，适合底部常驻
-    property int bottomplayerHeight:100
-    Behavior on opacity { NumberAnimation { duration: 300 } }
-    //教程https://runebook.dev/zh/docs/qt/qml-qtquick-dialogs-folderdialog/currentFolder
+    implicitHeight: 120
+    property int bottomplayerHeight: 100
+    property string currentCollectFile:""
+    Connections {
+           target: ASMRPlayer
+           function onCollect_file_changed(){playbackController.currentCollectFile=ASMRPlayer.get_collect_file()}
+    }
+    Behavior on opacity {
+        NumberAnimation { duration: 300 }
+    }
+
+    // 文件选择对话框
     FileDialog {
         id: fileDialog
         title: "选择要加载的音频资源"
-        currentFolder:"file:///"+appDir+"/download"
+        currentFolder: "file:///" + appDir + "/download"
+
         Component.onCompleted: {
             console.log(appDir)
         }
+
         onAccepted: {
             playbackController.mediaPlayer.stop()
             playbackController.mediaPlayer.source = fileDialog.selectedFile
             playbackController.mediaPlayer.play()
-            audioOutput.volume=playbackController.volume
+            audioOutput.volume = playbackController.volume
+
             var fileUrl = fileDialog.selectedFile.toString()
             var fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1)
             systemIcon.tooltip = fileName
-            if(fileDialog.selectedFile.toString().includes(".m3u8")||fileDialog.selectedFile.toString().includes(".ts")){
+
+            if (fileDialog.selectedFile.toString().includes(".m3u8") ||
+                fileDialog.selectedFile.toString().includes(".ts")) {
                 output.visible = true
+                playbackController.slider_bg=0
                 console.log("视频播放")
             } else {
-               output.visible = false
+                playbackController.slider_bg=theme.opacity
+                output.visible = false
                 console.log("音频播放")
             }
         }
@@ -65,20 +85,20 @@ Item {
         mediaPlayer: playbackController.mediaPlayer
     }
 
-   
     // 紧凑化自定义按钮（缩小尺寸，节省空间）
     component CustomButton: Button {
         implicitWidth: 36
         implicitHeight: 36
-        //radius: 4
         icon.width: 32
         icon.height: 32
         flat: true
+
         background: Rectangle {
             color: "transparent" // 透明背景，屏蔽原生选中态白底
-            MouseArea{
-                anchors.fill:parent
-                hoverEnabled:true
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
             }
         }
@@ -88,197 +108,174 @@ Item {
         property int diameter: 36
         Layout.preferredWidth: diameter
         Layout.preferredHeight: diameter
-        //radius: diameter / 2
         icon.width: 36
         icon.height: 36
         flat: true
+
         background: Rectangle {
             color: "transparent" // 透明背景，屏蔽原生选中态白底
-            MouseArea{
-                anchors.fill:parent
-                hoverEnabled:true
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
             }
         }
-    }
-
-    // 移除全屏按钮（按需求删除）
-    // 保留必要按钮：文件选择、URL输入、循环、设置
-    CustomButton {
-        id: fileDialogButton;
-        icon.source: "../images/本地加载.svg";
-        icon.color:theme.fontColor;
-        onClicked: fileDialog.open();
-    }
-
-    CustomButton {
-        id: openUrlButton
-        icon.source: "../images/连接.svg"
-        icon.color:theme.fontColor
-        onClicked: urlPopup.open()
-    }
-
-    CustomButton {
-        property bool loops:false
-        id: loopButton
-        icon.source: "../images/loop.svg"
-        icon.color: loops? theme.green:theme.fontColor
-        onClicked: loops=!loops
-        implicitWidth: 38
-        implicitHeight: 38
-    }
-
-    CustomButton {
-        id: settingsButton
-        icon.source: "../images/全屏.svg"
-        implicitWidth: 40
-        implicitHeight: 40
-        icon.color:playbackController.bottomplayerHeight===mainWindow.contentItem.height?theme.green:theme.fontColor
-        onClicked: {
-            //全屏状态
-            if( playbackController.bottomplayerHeight===mainWindow.contentItem.height){ //| playbackController.mediaPlayer.mediaStatus <= 0 ){
-                //发现顶部栏存在则隐藏
-                if(topbar.opacity===1){topbar.opacity=0;return;}
-                topbar.opacity=0
-                playbackController.bottomplayerHeight=100
-                topbar.fullscreen=false
-            }else{
-                playbackController.bottomplayerHeight=mainWindow.contentItem.height
-                topbar.fullscreen=true
-                topbar.opacity=0
-            }
-        }
-    }
-    // 控制按钮行（紧凑化间距）
-    RowLayout {
-        id: controlButtons
-        spacing: 8 // 原 16 → 减半，紧凑排列
-        CustomRoundButton {
-            id: backward10Button
-            icon.source: "../images/backward10.svg"
-            icon.color:theme.fontColor
-            onClicked: {
-                const pos = Math.max(0, playbackController.mediaPlayer.position - 10000)
-                playbackController.mediaPlayer.position=pos
-            }
-        }
-        //VLC下 1是缓存 2是播放 3是暂停 4是播放结束
-        CustomRoundButton {
-            id: playButton
-            visible: (playbackController.mediaPlayer.playbackState !==2)||(playbackController.mediaPlayer.pauseAnim.running)
-            icon.source: "../images/play_symbol.svg"
-            icon.color:theme.fontColor
-            onClicked: {
-                playbackController.mediaPlayer.playAnim.start()
-            }
-        }
-
-        CustomRoundButton {
-            id: pauseButton
-            visible: !playButton.visible
-            icon.source: "../images/pause_symbol.svg"
-            icon.color:theme.fontColor
-            onClicked: {
-                playbackController.mediaPlayer.pauseAnim.start()
-            }
-        }
-
-        CustomRoundButton {
-            id: forward10Button
-            icon.source: "../images/forward10.svg"
-            icon.color:theme.fontColor
-            onClicked: {
-                const pos = Math.min(playbackController.mediaPlayer.duration,
-                                   playbackController.mediaPlayer.position + 10000)
-                playbackController.mediaPlayer.position=pos
-            }
-        }
-    } // RowLayout controlButtons
-
-    // 音量条：强制显示（去掉原 showSlider 的宽度判断）
-    AudioControl {
-        id: audioControl
-        showSlider: true // 原 root.width >= 960 → 改为 true，永远显示音量条
-    }
-
-    // 进度条：永远显示，保持填充宽度
-    PlaybackSeekControl {
-        id: playbackSeekControl
-        Layout.fillWidth: true
-        mediaPlayer: playbackController.mediaPlayer
     }
 
     // 主布局（强制横屏，紧凑化内边距和间距）
     Rectangle {
         id: mainLayout
         anchors.fill: parent
-        anchors.margins:12
-        anchors.topMargin: 8 // 原 28 → 压缩顶部空白
-        visible: true // 强制显示，取消竖屏布局切换
-        color:"#00000000"
+        anchors.margins: 12
+        anchors.topMargin: 8
+        visible: true
+        color: "#00000000"
+
         ColumnLayout {
             anchors.fill: parent
-            spacing: 2 // 原 16 → 大幅压缩垂直间距
-            LayoutItemProxy {
-                target: playbackSeekControl
-                Layout.topMargin: 16 // 原 16 → 缩小
-                Layout.bottomMargin: 0 // 原 16 → 缩小
+            spacing: 2
+
+            // 进度条
+            PlaybackSeekControl {
+                id: playbackSeekControl
                 Layout.fillWidth: true
+                mediaPlayer: playbackController.mediaPlayer
             }
-            // 第一行：功能按钮 + 控制按钮 + 音量条
+
+            // 控制按钮行
             Item {
                 Layout.fillWidth: true
-                implicitHeight: 36 // 紧凑化行高
+                Layout.preferredHeight: 36
 
-                LayoutItemProxy {
-                    id: fdbProxy
-                    target: fileDialogButton
+                // 左侧：功能按钮组
+                RowLayout {
+                    id: leftButtons
                     anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 12
+
+                    HoverButton {
+                        id: fileDialogButton
+                        image_path: "qrc:/sources/image/本地加载.svg"
+                        onClicked: fileDialog.open()
+                    }
+
+                    HoverButton {
+                        id: openUrlButton
+                        image_path: "qrc:/sources/image/连接.svg"
+                        onClicked: urlPopup.open()
+                    }
+                    Column{
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 4
+                        Row{
+                            visible: currentCollectFile!==""
+                            spacing: 4
+                            Text {
+                                text: qsTr("播放列表:")
+                                color:theme.green
+                            }
+                            Text {
+                                width:150
+                                text:currentCollectFile
+                                color:theme.fontColor
+                                elide: Text.ElideMiddle
+                            }
+                        }
+                        Row{
+                            visible: systemIcon.tooltip!=="ASMRMOON"
+                            spacing: 4
+                            Text{
+                                text: qsTr("当前音频:")
+                                color:theme.green
+                            }
+                            Text {
+                                width:150
+                                text:systemIcon.tooltip.split("/").pop();
+                                color:theme.fontColor
+                                elide: Text.ElideMiddle
+                            }
+                        }
+
+                    }
+
                 }
 
-                LayoutItemProxy {
-                    target: openUrlButton
-                    anchors.left: fdbProxy.right
-                    anchors.leftMargin: 6 // 原 12 → 缩小边距
-                }
 
-                LayoutItemProxy {
-                    target: controlButtons
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                LayoutItemProxy {
-                    target: loopButton
-                    anchors.right: acProxy.left
-                    anchors.verticalCenter:acProxy.verticalCenter
-                    anchors.rightMargin: 6 // 原 12 → 缩小边距
-                }
-
-                LayoutItemProxy {
-                    id: acProxy
-                    target: audioControl
+                // 右侧：音频和设置按钮组
+                RowLayout {
+                    id: rightButtons
                     anchors.right: parent.right
-                    anchors.rightMargin: 30 // 取消右边距，紧凑显示
-                    //anchors.left: fdbProxy.right
-                    //anchors.leftMargin: 500 // 原 30 → 大幅缩小边距
-                    //anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+                    //播放暂停
+                    HoverButton {
+                        id: playButton
+                        visible: (playbackController.mediaPlayer.playbackState !== 2) ||
+                                (playbackController.mediaPlayer.pauseAnim.running)
+                        image_path: "qrc:/sources/image/play_symbol.svg"
+                        implicitWidth: 22
+                        implicitHeight: 22
+                        onClicked: {
+                            playbackController.mediaPlayer.playAnim.start()
+                        }
+                    }
+                    HoverButton {
+                        id: pauseButton
+                        visible: !playButton.visible
+                        image_path: "qrc:/sources/image/pause_symbol.svg"
+                        implicitWidth: 22
+                        implicitHeight: 22
+                        onClicked: {
+                            playbackController.mediaPlayer.pauseAnim.start()
+                        }
+                    }
+                    // 循环按钮
+                    CustomButton {
+                        property bool loops: false
+                        id: loopButton
+                        icon.source: "qrc:/sources/image/loop.svg"
+                        icon.color: loops ? theme.green : theme.fontColor
+                        onClicked: loops = !loops
+                        implicitWidth: 36
+                        implicitHeight: 36
+                    }
+
+                    // 音量控制
+                    AudioControl {
+                        id: audioControl
+                        showSlider: true
+                        height: 36
+                    }
+
+                    // 全屏按钮
+                    HoverButton {
+                        id: settingsButton
+                        image_path: "qrc:/sources/image/全屏.svg"
+                        implicitWidth: 22
+                        implicitHeight: 22
+                        onClicked: {
+                            //取消全屏
+                            if (playbackController.bottomplayerHeight === mainWindow.contentItem.height) {
+                                if (topbar.opacity === 1) {
+                                    topbar.opacity = 0
+                                    return
+                                }
+                                topbar.opacity = 0
+                                playbackController.bottomplayerHeight = 100
+                                topbar.fullscreen = false
+                            }
+                            //执行全屏
+                            else {
+                                playbackController.bottomplayerHeight = mainWindow.contentItem.height
+                                topbar.fullscreen = true
+                                topbar.opacity = 0
+                            }
+                        }
+                    }
                 }
-
-                LayoutItemProxy {
-                    id: sbProxy
-                    target: settingsButton
-                    anchors.right: parent.right
-                    anchors.rightMargin: 0 // 取消右边距，紧凑显示
-                    anchors.bottom:parent.bottom
-                    anchors.bottomMargin: -7
-                    //anchors.verticalCenter: parent.verticalCenter
-                }
-            } // Item
-
-            // 第二行：进度条（永远显示，缩小上下边距）
-
+            }
         }
-    } // Frame mainLayout
-
-    // 移除竖屏布局（portraitLayout）：因强制横屏，无需保留
+    }
 }

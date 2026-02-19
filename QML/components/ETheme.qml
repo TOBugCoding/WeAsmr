@@ -3,9 +3,21 @@ import QtQuick 2.15
 
 QtObject {
     id: theme
-
+    // 透明度
+    property double opacity:0.9
+    // 皮肤模式
     property bool isDark: true
-
+    Component.onCompleted: {
+        var themeCfg = configMgr.getThemeConfig();
+        theme.opacity = themeCfg.opacity;
+        theme.isDark = themeCfg.isDark;
+    }
+    onOpacityChanged: {
+        configMgr.saveThemeConfig(theme.opacity, theme.isDark)
+    }
+    onIsDarkChanged: {
+        configMgr.saveThemeConfig(theme.opacity, theme.isDark)
+    }
     // === 全局动画窗口状态聚合 ===
     // 当前打开的动画窗口数量（由各 EAnimatedWindow 自动维护）
     property int openAnimatedWindowCount: 0
@@ -13,13 +25,12 @@ QtObject {
     property bool anyAnimatedWindowOpen: openAnimatedWindowCount > 0
     //下载进度条颜色
     property color dowloadColor:"#00C4B3"
-    // 透明度
-    property double opacity:0.8
+
     // === 顶部栏和左侧栏颜色 ===
     property color globalColor: "#00C4B3"   // 默认响应颜色
     property var globalBrightness:isDark ?1:0
-    property color contentColor:isDark ?"#1E1E20":"#FAFAFA"   //主题色#FAFAFA
-    property color leftBarColor:isDark?"#171718": "#F6F6F6"  //深的主题色#F6F6F6
+    property color contentColor:isDark ?"#1E1E20":"#dbdbdb"   //主题色#FAFAFA
+    property color leftBarColor:isDark?"#171718": "#d2d2d2"  //深的主题色#F6F6F6
     property color fontColor:isDark?"white":"black"
     property color samllTitleColor:isDark?"white":"black"
     property color highlightColor:isDark?"white":"black"
@@ -33,7 +44,7 @@ QtObject {
     // 默认强调色（非播放状态使用）
     property color defaultFocusColor: "#00C4B3"
     property color focusColor: defaultFocusColor
-    
+
     // === 全局音量（0.0 - 1.0），用于 EMusicPlayer 绑定 ===
     property real musicVolume: 0.2
 
