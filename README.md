@@ -8,7 +8,7 @@
 
 ![image.png](https://github.com/TOBugCoding/gitTest/blob/main/show3.png)
 # 二、使用到的开源项目
-1. [MediaGun]https://github.com/MediaGun/QuickVLC/releases
+1. https://github.com/MediaGun/QuickVLC/releases
 # 三、为爱发电项目，永久免费
 倘若喜欢本程序，欢迎请开发者补充一瓶营养快线。
 
