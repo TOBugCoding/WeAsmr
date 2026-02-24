@@ -12,7 +12,7 @@
 # 三、为爱发电项目，永久免费
 倘若喜欢本程序，欢迎请开发者补充一瓶营养快线。
 
-<img src="https://github.com/TOBugCoding/gitTest/blob/main/wx.jpg" width="200" alt="微信二维码">
+<img src="https://github.com/TOBugCoding/gitTest/blob/main/wx.jpg" width="250" alt="微信二维码"><img src="https://github.com/TOBugCoding/gitTest/blob/main/zfb.jpg" width="200" alt="支付宝二维码">
 
-<img src="https://github.com/TOBugCoding/gitTest/blob/main/zfb.jpg" width="200" alt="支付宝二维码">
+
 
