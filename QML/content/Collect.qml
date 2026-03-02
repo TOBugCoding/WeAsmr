@@ -52,6 +52,16 @@ Item {
             ASMRPlayer.set_collect_file(collectPage.currentCollectFile,true)
         }
     }
+    FileDialog {
+        id: fileDialog
+        title: "选择要添加的音频资源"
+        currentFolder: "file:///" + appDir + "/download"
+        onAccepted:{
+            ASMRPlayer.collect_audio(ASMRPlayer.get_collect_file(),fileDialog.selectedFile);
+            //qml刷新数据
+            ASMRPlayer.load_audio(ASMRPlayer.get_collect_file());
+        }
+    }
     // 显示音频列表的ListView
     //列表实体显示区域
     Item{
@@ -73,9 +83,22 @@ Item {
                 }
             }
             HoverButton{
+                id:load_local_audio
                 anchors.top:collect_title.bottom
                 anchors.topMargin:20
                 anchors.left:sequence_btn.right
+                anchors.leftMargin: 20
+                width: 22
+                height: 22
+                image_path:"qrc:/sources/image/导入.svg"
+                onClicked:{
+                    fileDialog.open()
+                }
+            }
+            HoverButton{
+                anchors.top:collect_title.bottom
+                anchors.topMargin:20
+                anchors.left:load_local_audio.right
                 anchors.leftMargin: 20
                 image_path:"qrc:/sources/image/垃圾桶.svg";
                 onClicked:{
@@ -140,10 +163,23 @@ Item {
                                     return;
                                 }
                                 if(currentPlaying !== model.name){
-                                    ASMRPlayer.get_sign_path("/" + model.audioPath);
+                                    currentPlaying = model.audioPath
+                                    ASMRPlayer.set_current_playing(model.audioPath);
+                                    ASMRPlayer.get_sign_path(model.audioPath);
+                                    let targetLrc=model.name.split(".").slice(0, -1).join(".")+".lrc"
+                                    if(targetLrc===model.name)return;
+                                    for (var i = 0; i < audioListModel.count; i++) {
+                                        // get(i) 获取第i项的所有属性
+                                        var item = audioListModel.get(i);
+                                        if (item.name === targetLrc) {
+                                            console.log("找到音频对应的lrc文件"+item.name)
+                                            ASMRPlayer.download_vlc_path(item.audioPath)
+                                            return
+                                        }
+                                    }
+                                    ASMRPlayer.show_vlc(false)
+
                                 }
-                                currentPlaying = model.audioPath
-                                ASMRPlayer.set_current_playing(collectPage.currentPlaying);
                             }
                             // 悬停进入：启动放大动画
                             onEntered: {
@@ -220,7 +256,7 @@ Item {
                                     Layout.alignment: Qt.AlignVCenter
                                 }
                                 HoverButton {
-                                    visible:!model.is_dir
+                                    visible:!model.is_dir&&!model.audioPath.startsWith("file:///")
                                     image_path: "qrc:/sources/image/下载.svg"
                                     onClicked: {
                                         ASMRPlayer.download_sign_path("/" + model.audioPath);

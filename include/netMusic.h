@@ -13,7 +13,22 @@
 #include <QString>
 #include <qfile.h>
 #include <mutex>
+#include <QFileInfo>
+#include <QPoint>
+
 #define COLLECTION_JSON_PATH "./audio_collections.json"
+
+struct LrcItem {
+    Q_GADGET
+    Q_PROPERTY(float startTime MEMBER startTime)
+    Q_PROPERTY(QString lrcContent MEMBER lrcContent)
+public:
+    float startTime;//转成毫秒
+    QString lrcContent;//
+    LrcItem(float  time = 0, QString content ="")
+        : startTime(time), lrcContent(content) {
+    }
+};
 
 struct AsmrItem {
     Q_GADGET
@@ -55,6 +70,7 @@ public:
     Q_INVOKABLE void asmr_list(const QString& path,bool needAdd=true);
     //获取/修改 当前播放路径 不含曲名
     Q_INVOKABLE QString get_path();Q_INVOKABLE void set_path(QString path);
+    Q_INVOKABLE QString get_search_path();Q_INVOKABLE void set_search_path(QString path);
     //获取/修改当前页数
     Q_INVOKABLE int get_page();Q_INVOKABLE void set_page(int page);
     Q_INVOKABLE int get_totalpage(){return total_page;}
@@ -104,6 +120,15 @@ public:
     Q_INVOKABLE void backHistory();
     //前进历史，有返回
     Q_INVOKABLE void forwardHistory();
+    //返回当前记录
+    Q_INVOKABLE void curentHistory();
+    Q_INVOKABLE qint64 getFileSize(const QUrl &url);
+    Q_INVOKABLE void getLrc(const QString url);
+    //获取vlc下载接口，执行下载任务，下载到内存种并写回
+    Q_INVOKABLE void download_vlc_path(const QString url);
+    Q_INVOKABLE void show_vlc(bool show){emit sigShowVlc(show);}
+    Q_INVOKABLE QString get_vlcName(const QString path);
+
 signals:
     //load_audio完成后触发信号 发送QList给qml进行加载
     //key:收藏夹名称
@@ -132,12 +157,19 @@ signals:
     void emptyM3u8(QString path);
     //发送当前响应的asmr路径和页数
     void sigFilePath(FilePath filepath);
+    //发送lrc歌词
+    void sigLrcContent(const QVector<LrcItem>& List);
+    void sigShowVlc(bool show);
 
 private slots:
     //统一返回接口
     void onReplyFinished(QNetworkReply* reply);
     //void onTestReplyFinished(QNetworkReply* reply);
 private:
+    //lrc时间转化
+    float parseLrcTime(const QString &timeStr);
+    //复用单行转化，这里直接转换qstring
+    QVector<LrcItem> parseLrcContent(const QString &lrcContent);
     //检测收藏夹是否存在
     bool isCollectionExist(const QString& folderName, const QJsonArray& collectionArray);
     QNetworkAccessManager* m_netManager;
@@ -151,6 +183,7 @@ private:
 
     QString current_playing;//记录当前正在播放的音频
     QString current_url=""; // 记录完整文件夹路径 不含音频名称
+    QString search_path;
     int current_page=1; //当前的页数
     int total_page=1;
     QString collect_file;//当前的收藏夹
@@ -167,4 +200,5 @@ private:
     //存储asmr页面文件夹更改路径，执行回退和前进
     QList<FilePath>* history;
     int currentFilePathIndex=0;
+
 };

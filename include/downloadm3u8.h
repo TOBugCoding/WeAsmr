@@ -21,7 +21,7 @@ class Downloadm3u8 : public QObject
 {
     Q_OBJECT
 public:
-    explicit Downloadm3u8(QObject *parent = nullptr);
+    explicit Downloadm3u8(QString _pre_path,QObject *parent = nullptr);
     ~Downloadm3u8() override;
 
     /**
@@ -82,6 +82,7 @@ private:
     bool m_isMerging;                         // 是否正在合并
     QMutex m_mutex;                           // 线程安全锁
     QMap<int, QPointer<QNetworkReply>> m_runningReplies; // 运行中的请求
+    QString pre_path;
 };
 
 #endif // DOWNLOADM3U8_H

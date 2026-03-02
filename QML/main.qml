@@ -33,22 +33,6 @@ ApplicationWindow {
         id: theme
     }
 
-    Components.EAlertDialog {
-        anchors.fill:parent
-        id: exitDialog
-        title: "要退出应用吗？"
-        message: "退出将关闭所有窗口。"
-        cancelText: "取消"
-        confirmText: "退出"
-        dismissOnOverlay: false
-        onConfirm: mainWindow.close()
-        focus:true
-        Keys.onReturnPressed:{
-            confirm();
-        }
-    }
-
-
     //顶部
     TopBar {
         id:topbar
@@ -84,10 +68,11 @@ ApplicationWindow {
         z:2
     }
     SystemTrayIcon {
+        property string appName:"ASMRGAY"
         id:systemIcon
         visible: true
         icon.source: "qrc:/fonts/icon.ico"
-        tooltip: "ASMRMOON"
+        tooltip: systemIcon.appName
         menu: Menu {
             MenuItem {
                 icon.source: "qrc:/sources/image/感叹号.svg"

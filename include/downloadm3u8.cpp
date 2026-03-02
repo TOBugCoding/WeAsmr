@@ -7,7 +7,7 @@
 #include <QUuid>
 #include <QFileInfo>
 
-Downloadm3u8::Downloadm3u8(QObject *parent)
+Downloadm3u8::Downloadm3u8(QString _pre_path,QObject *parent)
     : QObject(parent)
     , m_nam(new QNetworkAccessManager(this))
     , m_currentDownloaded(0)
@@ -15,6 +15,7 @@ Downloadm3u8::Downloadm3u8(QObject *parent)
     , m_maxConcurrent(8)  // 默认最大并发8个
     , m_isStopped(false)
     , m_isMerging(false)
+    , pre_path(_pre_path)
 {
     connect(m_nam, &QNetworkAccessManager::finished, this, &Downloadm3u8::onReplyFinished);
 
@@ -183,8 +184,8 @@ void Downloadm3u8::startNextDownloads()
     int nextIndex = m_currentDownloaded + m_runningReplies.size();
     while (availableSlots > 0 && nextIndex < m_tsUrlList.size()) {
         // 启动下载
-        QString tsUrl = m_tsUrlList.at(nextIndex);
-
+        QString tsUrl = pre_path+"/"+m_tsUrlList.at(nextIndex);//url添加
+        qDebug()<<tsUrl;
         QNetworkReply *reply = m_nam->get(QNetworkRequest(tsUrl));
         m_runningReplies.insert(nextIndex, reply);
 
@@ -270,7 +271,7 @@ void Downloadm3u8::parseM3U8(const QString &m3u8Content)
     m_tsUrlList.clear();
 
     QStringList lines = m3u8Content.split(QRegularExpression(R"(\r?\n)"), Qt::SkipEmptyParts);
-    QRegularExpression tsRegex(R"(^https?://.+\.ts$)", QRegularExpression::CaseInsensitiveOption);
+    QRegularExpression tsRegex(R"(^dir_.+\.jpg$)", QRegularExpression::CaseInsensitiveOption);
 
     foreach (QString line, lines) {
         line = line.trimmed();

@@ -10,6 +10,8 @@ import "../components"
 Item {
     opacity:0
     id: searchtPage
+    property int page:1//当前页数
+    property int totalpage:1//总页数
     property string currentPlaying: ""
     // 连接加载完成信号
     Connections {
@@ -26,20 +28,66 @@ Item {
             }
             console.log("收藏夹加载完成，共" + audioList.length + "首音频");
         }
-        function onPageChanged(page){
+        function onPageChanged(_page){
             //无论是重复搜索还是不是，都重新加载
+            searchtPage.page=_page
             audioListModel.clear();
         }
         function onCurrent_playing_changed(){
             searchtPage.currentPlaying=ASMRPlayer.get_current_playing();
+        }
+        function onTotalPageChanged(_page){
+            console.log("总页数"+_page)
+            searchtPage.totalpage=_page
         }
 
     }
     SelectCollect{
         id:selectCollect
     }
-    Item {
+    RowLayout {
+        id: title_head
         anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 80
+        Layout.rightMargin: 20
+        anchors.leftMargin: 50
+        //右侧 显示页面 上一页 下一页
+        RowLayout {
+            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+            spacing: 10
+
+            HoverButton{
+                image_path:"qrc:/sources/image/箭头_上一页.svg"//箭头_下一页.svg
+                onClicked: {
+                    if(searchtPage.page<=1){return;}
+                    let _page=ASMRPlayer.get_page()-1;
+                    ASMRPlayer.set_page(_page);
+                    ASMRPlayer.search_list(ASMRPlayer.get_search_path())
+                }
+            }
+            Text{
+                text:"当前页数: "+searchtPage.page+" / "+searchtPage.totalpage
+                font.pointSize:9
+                color:theme.fontColor
+            }
+            HoverButton{
+                image_path:"qrc:/sources/image/箭头_下一页.svg"//箭头_下一页.svg
+                onClicked: {
+                    if(searchtPage.page>=searchtPage.totalpage){return;}//当当前页数大于等于总页数就不能下一页
+                    console.log("下一页")
+                    let _page=ASMRPlayer.get_page()+1;
+                    ASMRPlayer.set_page(_page);
+                    ASMRPlayer.search_list(ASMRPlayer.get_search_path())
+                }
+            }
+            Item{width:5}
+
+        }
+    }
+    Item {
+        anchors.top: title_head.bottom
         anchors.left: parent.left
         anchors.leftMargin:50
         anchors.right: parent.right
@@ -96,10 +144,22 @@ Item {
                                 //                 "?sign=J6Pg2iI3DmhltIzETpxWUM13oVCCHYw6jHEtlrFKWOE=:0";
                                 // console.log(playUrl)
                                 if(currentPlaying !== model.audioPath){
+                                    currentPlaying = model.audioPath.substring(1)
+                                    ASMRPlayer.set_current_playing(currentPlaying);
                                     ASMRPlayer.get_sign_path(model.audioPath);
+                                    let targetLrc=model.audioPath.split(".").slice(0, -1).join(".")+".lrc"
+                                    if(targetLrc===model.name)return;
+                                    for (var i = 0; i < audioListModel.count; i++) {
+                                        var item = audioListModel.get(i);
+                                        if (item.audioPath === targetLrc) {
+                                            console.log("找到音频对应的lrc文件"+item.audioPath)
+                                            ASMRPlayer.download_vlc_path(item.audioPath)
+                                            return
+                                        }
+                                    }
+                                    ASMRPlayer.show_vlc(false)
                                 }
-                                currentPlaying = model.audioPath.substring(1)
-                                ASMRPlayer.set_current_playing(currentPlaying);
+
                             }
                             // 悬停进入：启动放大动画
                             onEntered: {
@@ -195,7 +255,7 @@ Item {
                                     text: model.audioPath
                                     font.pixelSize: 16
                                     color: ("/"+currentPlaying) === model.audioPath ? theme.green : theme.fontColor
-                                    elide: Text.ElideRight
+                                    elide: Text.ElideMiddle
                                     Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignVCenter
                                     Layout.leftMargin: 0

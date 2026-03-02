@@ -11,40 +11,7 @@
         <file>QML/content/Aboutme.qml</file>
         <file>fonts/icon.ico</file>
         <file>QML/components/Aboutme.qml</file>
-        <file>QML/components/EAccordion.qml</file>
-        <file>QML/components/EAlertDialog.qml</file>
-        <file>QML/components/EAnimatedWindow.qml</file>
-        <file>QML/components/EAreaChart.qml</file>
-        <file>QML/components/EAvatar.qml</file>
-        <file>QML/components/EBatteryCard.qml</file>
-        <file>QML/components/EBlurCard.qml</file>
-        <file>QML/components/EButton.qml</file>
-        <file>QML/components/ECalendar.qml</file>
-        <file>QML/components/ECard.qml</file>
-        <file>QML/components/ECardWithTextArea.qml</file>
-        <file>QML/components/ECarousel.qml</file>
-        <file>QML/components/ECheckBox.qml</file>
-        <file>QML/components/EClock.qml</file>
-        <file>QML/components/EClockCard.qml</file>
-        <file>QML/components/EDataTable.qml</file>
-        <file>QML/components/EDrawer.qml</file>
-        <file>QML/components/EDropdown.qml</file>
-        <file>QML/components/EFitnessProgress.qml</file>
-        <file>QML/components/EHitokotoCard.qml</file>
-        <file>QML/components/EHoverCard.qml</file>
-        <file>QML/components/EInput.qml</file>
-        <file>QML/components/EList.qml</file>
-        <file>QML/components/ELoader.qml</file>
-        <file>QML/components/ENavBar.qml</file>
-        <file>QML/components/ENextHolidayCountdown.qml</file>
-        <file>QML/components/ERadioButton.qml</file>
-        <file>QML/components/ESimpleDatePicker.qml</file>
-        <file>QML/components/ESlider.qml</file>
-        <file>QML/components/ESwitchButton.qml</file>
         <file>QML/components/ETheme.qml</file>
-        <file>QML/components/ETimeDisplay.qml</file>
-        <file>QML/components/EYearProgress.qml</file>
-        <file>QML/components/MusicWindow.qml</file>
         <file>fonts/fontawesome-free-6.7.2-desktop/otfs/Font Awesome 6 Free-Solid-900.otf</file>
         <file>fonts/pic/01.jpg</file>
         <file>fonts/pic/02.jpg</file>
@@ -114,5 +81,9 @@
         <file>sources/image/连接.svg</file>
         <file>sources/image/loop.svg</file>
         <file>sources/image/全屏.svg</file>
+        <file>QML/components/ELoader.qml</file>
+        <file>QML/components/EButton.qml</file>
+        <file>sources/image/导入.svg</file>
+        <file>sources/image/设置.svg</file>
     </qresource>
 </RCC>

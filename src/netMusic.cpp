@@ -1,5 +1,5 @@
 ﻿#include "netMusic.h"
-
+#include "webAddr.h"
 NetMusic::NetMusic(QObject* parent)
     : QObject(parent)
     , m_netManager(new QNetworkAccessManager(this))
@@ -7,12 +7,7 @@ NetMusic::NetMusic(QObject* parent)
     , m_preReply(nullptr)
     ,history(nullptr)
 {
-    // QNetworkProxy proxy;
-    // proxy.setType(QNetworkProxy::Socks5Proxy);
-    // proxy.setHostName("127.0.0.1");
-    // proxy.setPort(3080);                     // 代理端口
-    // QNetworkProxy::setApplicationProxy(proxy);
-    // 目前用的是Proxifier PE+meriru作为翻墙手段
+    webAddr::GetInstance().initWebAddr(webAddr::moon);
     history = new QList<FilePath>();
     history->append(FilePath("",1,1));
     connect(m_netManager, &QNetworkAccessManager::finished, this, &NetMusic::onReplyFinished);
@@ -36,7 +31,7 @@ NetMusic::~NetMusic()
 void NetMusic::search_list(const QString keyword) {
     //std::unique_lock<std::mutex> lock(netlock);
     replymode = netType::search_list_type;
-    QUrl url("https://asmrmoon.com/api/fs/search");
+    QUrl url(webAddr::GetInstance().getMainweb()+"/api/fs/search");//https://asmrmoon.com
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
     request.setHeader(QNetworkRequest::UserAgentHeader,
@@ -78,6 +73,8 @@ void NetMusic::net_search_list(QNetworkReply* reply) {
         QJsonObject rootObj = jsonDoc.object();
         QJsonObject dataObj = rootObj["data"].toObject();
         QJsonArray contentArray = dataObj["content"].toArray();
+        total_page = dataObj["total"].toInt() / 100 + (dataObj["total"].toInt() % 100 != 0);
+        emit totalPageChanged(total_page);
         for (const QJsonValue& val : std::as_const(contentArray)) {
             if (val.isObject()) {
                 const QJsonObject obj = val.toObject();
@@ -109,7 +106,7 @@ void NetMusic::asmr_list(const QString& path,bool needAdd)
         current_url +="/";
     }
     qDebug()<<"程序记录路径是"<<current_url;
-    QUrl url("https://asmrmoon.com/api/fs/list");
+    QUrl url(webAddr::GetInstance().getMainweb()+"/api/fs/list");//https://asmrmoon.com
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
     request.setHeader(QNetworkRequest::UserAgentHeader,
@@ -211,6 +208,12 @@ void NetMusic::set_path(QString path) {
     current_url = path;
 }
 
+QString NetMusic::get_search_path(){
+    return search_path;
+}
+void NetMusic::set_search_path(QString path){
+    search_path=path;
+}
 int NetMusic::get_page() {
     return current_page;
 }
@@ -778,8 +781,9 @@ QString NetMusic::get_audioName(){
     QString audioName=get_current_playing();
     qDebug()<<"当前播放"<<audioName;
     bool canReturn=false;
+    //这里再做一个格式判断
     for(QString& child:collect_audio_list){
-        if(canReturn){
+        if(canReturn&&!child.endsWith("lrc")){
             qDebug()<<"下一首播放"<<child;
             set_current_playing(child);
             return child;
@@ -792,6 +796,27 @@ QString NetMusic::get_audioName(){
     set_current_playing("");
     return "";
 
+}
+//找相同名称，以ts结尾，且不是file:///开头
+QString NetMusic::get_vlcName(const QString path){
+    QString vlcName="";
+    if(path.length()==0||path.startsWith("file:///")||path.endsWith("lrc")){
+        qDebug()<<"vlc为空";
+        return vlcName;
+    }
+    QStringList pathParts = path.split(".");
+    if (pathParts.size() > 1) {
+        pathParts.removeLast();
+    }
+    QString tagetvlc = pathParts.join(".") + ".lrc";
+    for(const QString& child:std::as_const(collect_audio_list)){
+        if(child==tagetvlc){
+            qDebug()<<"返回vlc"+child;
+            return tagetvlc;
+        }
+    }
+    qDebug()<<"vlc为空";
+    return vlcName;
 }
 
 void NetMusic::set_current_playing(QString path){
@@ -807,16 +832,24 @@ QString NetMusic::get_current_playing(){
 
 
 void NetMusic::get_sign_path(const QString path){
-    //如果路径是含空格的m3u8则不允许进行下一步
-
-    QUrl url("https://asmrmoon.com/api/fs/get");
+    if(path.startsWith("file:///")){
+        //本地路径直接发送
+        qDebug()<<"检测到本地播放";
+        emit signPathReceived(path);
+        return;
+    }
+    QString finalpath=path;
+    if(!path.startsWith("/")){
+        finalpath="/"+finalpath;
+    }
+    QUrl url(webAddr::GetInstance().getMainweb()+"/api/fs/get");//https://asmrmoon.com
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json;charset=UTF-8");
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36");
 
     QJsonObject params;
-    params.insert("path", path);
+    params.insert("path", finalpath);
     params.insert("password", "");
     QJsonDocument jsonDoc(params);
     QByteArray postData = jsonDoc.toJson(QJsonDocument::Compact);
@@ -828,19 +861,34 @@ void NetMusic::get_sign_path(const QString path){
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &parseError);
         if (jsonDoc.isObject()) {
             QJsonObject rootObj = jsonDoc.object();
+            if(!rootObj.contains("data")){
+                emit signPathReceived("");
+                qDebug()<<"json规则不合法";
+                reply->deleteLater();
+                return;
+            }
             QJsonObject dataObj = rootObj["data"].toObject();
+            if(!dataObj.contains("raw_url")){
+                emit signPathReceived("");
+                qDebug()<<"json规则不合法";
+                reply->deleteLater();
+                return;
+            }
             QString sign_path=dataObj["raw_url"].toString();
             QStringList parts = sign_path.split("sign=");
             sign_record=parts[1];
             qDebug()<<"路径："<<sign_path;
-            if(path.contains(" ")&&path.contains("m3u8")){
+            QString decodedPath = QUrl::fromPercentEncoding(path.toUtf8());
+            if(decodedPath.contains("%20")&&path.contains("m3u8")){
                 emit emptyM3u8(sign_path);
                 qDebug()<<"检测到含空格的m3u8";
+                reply->deleteLater();
                 return;
             }else{
                 emit signPathReceived(sign_path);
             }
-
+        }else{
+            emit errorDetail("当前网站"+webAddr::GetInstance().getMainweb()+"访问不到该资源");
         }
         reply->deleteLater();
     });
@@ -848,7 +896,7 @@ void NetMusic::get_sign_path(const QString path){
 
 void NetMusic::download_sign_path(const QString path){
 
-    QUrl url("https://asmrmoon.com/api/fs/get");
+    QUrl url(webAddr::GetInstance().getMainweb()+"/api/fs/get");//https://asmrmoon.com
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json;charset=UTF-8");
     request.setHeader(QNetworkRequest::UserAgentHeader,
@@ -867,7 +915,19 @@ void NetMusic::download_sign_path(const QString path){
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &parseError);
         if (jsonDoc.isObject()) {
             QJsonObject rootObj = jsonDoc.object();
+            if(!rootObj.contains("data")){
+                emit downloadPathReceived("");
+                qDebug()<<"json规则不合法";
+                reply->deleteLater();
+                return;
+            }
             QJsonObject dataObj = rootObj["data"].toObject();
+            if(!dataObj.contains("raw_url")){
+                emit downloadPathReceived("");
+                qDebug()<<"json规则不合法";
+                reply->deleteLater();
+                return;
+            }
             QString sign_path=dataObj["raw_url"].toString();
             QStringList parts = sign_path.split("sign=");
             sign_record=parts[1];
@@ -876,7 +936,117 @@ void NetMusic::download_sign_path(const QString path){
         reply->deleteLater();
     });
 }
+QVector<LrcItem> NetMusic::parseLrcContent(const QString &lrcContent)
+{
+    QVector<LrcItem> lrcList;
+    if (lrcContent.isEmpty()) {
+        return lrcList;
+    }
 
+    // 正则表达式匹配LRC行：[00:01.20]歌词内容
+    static QRegularExpression lrcRegex(R"(\[(\d{2}:\d{2}\.\d{1,3})\](.*))");
+    QRegularExpressionMatch match;
+
+    // 按行分割LRC内容
+    QStringList lines = lrcContent.split(QRegularExpression("\r\n|\r|\n"));
+    for (const QString &line : lines) {
+        QString trimmedLine = line.trimmed();
+        if (trimmedLine.isEmpty()) {
+            continue; // 跳过空行
+        }
+
+        // 匹配正则
+        match = lrcRegex.match(trimmedLine);
+        if (match.hasMatch()) {
+            // 提取时间戳和歌词内容
+            QString timeStr = match.captured(1);
+            QString content = match.captured(2).trimmed(); // 去除歌词前后空格
+            if (content.isEmpty()) {
+                continue;
+            }
+            float startTime = parseLrcTime(timeStr);
+            if (startTime <= 0) {
+                continue; // 跳过无效时间
+            }
+            lrcList.append(LrcItem(startTime, content));
+            qDebug() << "[解析网络LRC]" << startTime << content;
+        }
+    }
+
+    return lrcList;
+}
+
+void NetMusic::download_vlc_path(const QString path){
+    if(path.startsWith("file:///")){
+        //本地路径直接发送
+        return;
+    }
+    if(!path.contains("lrc")){
+        return;
+    }
+    qDebug()<<"执行lrc下载任务";
+    QUrl url(webAddr::GetInstance().getMainweb()+"/api/fs/get");//https://asmrmoon.com
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json;charset=UTF-8");
+    request.setHeader(QNetworkRequest::UserAgentHeader,
+                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36");
+
+    QJsonObject params;
+    params.insert("path", path);
+    params.insert("password", "");
+    QJsonDocument jsonDoc(params);
+    QByteArray postData = jsonDoc.toJson(QJsonDocument::Compact);
+    QNetworkReply* reply = m_netManager->post(request, postData);
+
+    connect(reply, &QNetworkReply::finished, this, [reply,this]() {
+        QByteArray responseData = reply->readAll();
+        QJsonParseError parseError;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &parseError);
+        if (jsonDoc.isObject()) {
+            QJsonObject rootObj = jsonDoc.object();
+            if(!rootObj.contains("data")){
+                emit downloadPathReceived("");
+                qDebug()<<"json规则不合法";
+                reply->deleteLater();
+                return;
+            }
+            QJsonObject dataObj = rootObj["data"].toObject();
+            if(!dataObj.contains("raw_url")){
+                emit downloadPathReceived("");
+                qDebug()<<"json规则不合法";
+                reply->deleteLater();
+                return;
+            }
+            QString sign_path=dataObj["raw_url"].toString();
+            QNetworkAccessManager* qnam = new QNetworkAccessManager(this); // 父对象设为this，自动回收
+            QNetworkRequest lrcRequest(sign_path);
+            QNetworkReply* lrcReply = qnam->get(lrcRequest);
+            connect(lrcReply, &QNetworkReply::finished, this, [lrcReply, qnam, this]() {
+                QVector<LrcItem> lrcList;
+
+                // 处理下载错误
+                if (lrcReply->error() != QNetworkReply::NoError) {
+                    qDebug() << "LRC文件下载失败：" << lrcReply->errorString();
+                    emit sigLrcContent(lrcList);
+                } else {
+                    // 读取LRC内容（自动处理UTF-8编码）
+                    QByteArray lrcData = lrcReply->readAll();
+                    QString lrcContent = QString::fromUtf8(lrcData);
+                    //qDebug() << "下载到LRC内容：" << lrcContent;
+                    // 直接解析LRC内容
+                    lrcList = this->parseLrcContent(lrcContent);
+                    // 发送解析后的歌词列表
+                    emit sigLrcContent(lrcList);
+                }
+
+                // 清理资源
+                lrcReply->deleteLater();
+                qnam->deleteLater(); // 手动释放QNetworkAccessManager
+            });
+        }
+        reply->deleteLater();
+    });
+}
 QString NetMusic::get_sign_record(){
     return sign_record;
 }
@@ -923,4 +1093,99 @@ void NetMusic::forwardHistory(){
         emit sigFilePath(history->at(currentFilePathIndex));
     }
 
+}
+void NetMusic::curentHistory(){
+    emit sigFilePath(history->at(currentFilePathIndex));
+}
+qint64 NetMusic::getFileSize(const QUrl &url)
+{
+    // 判断是否为本地文件
+    if (!url.isLocalFile()) {
+        qWarning() << "仅支持本地文件获取大小：" << url.toString();
+        return -1; // 网络URL无法获取大小
+    }
+
+    // 转为本地文件路径
+    QString filePath = url.toLocalFile();
+    QFileInfo fileInfo(filePath);
+    if (!fileInfo.exists()) {
+        qWarning() << "文件不存在：" << filePath;
+        return -1;
+    }
+    qDebug()<<"文件大小为"<<fileInfo.size();
+    // 返回文件大小（字节）
+    return fileInfo.size();
+}
+float NetMusic::parseLrcTime(const QString &timeStr)
+{
+    // 拆分 分:秒.毫秒
+    QStringList timeParts = timeStr.split(':');
+    if (timeParts.size() != 2) {
+        return 0.0f;
+    }
+
+    // 提取分钟
+    bool minOk = false;
+    int minutes = timeParts[0].toInt(&minOk);
+    if (!minOk) return 0.0f;
+
+    // 拆分秒和毫秒
+    QStringList secMsParts = timeParts[1].split('.');
+    bool secOk = false;
+    int seconds = secMsParts[0].toInt(&secOk);
+    if (!secOk) return 0.0f;
+
+    // 毫秒（不足两位补0，超过两位取前两位）
+    int milliseconds = 0;
+    if (secMsParts.size() > 1) {
+        QString msStr = secMsParts[1].left(2).rightJustified(2, '0'); // 确保两位
+        milliseconds = msStr.toInt();
+    }
+
+    // 转换为总毫秒（分钟*60*1000 + 秒*1000 + 毫秒）
+    return static_cast<float>(minutes * 60000 + seconds * 1000 + milliseconds);
+}
+void NetMusic::getLrc(const QString localpath){
+    QVector<LrcItem> lrcList;
+
+    QString filePath = localpath;
+    // 如果路径包含file:///前缀，转换为本地路径
+    if (filePath.startsWith("file:///")) {
+        filePath = QUrl(filePath).toLocalFile();
+    }
+
+    // 2. 打开文件（支持UTF-8/GBK编码，兼容不同LRC文件）
+    QFile file(filePath); // 使用转换后的本地路径
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug()<<"未读取到lrc"<<filePath; // 打印转换后的路径，方便排查
+        emit sigLrcContent(lrcList);
+        return;
+    }
+
+    // 4. 正则表达式匹配LRC行：[00:01.20]歌词内容
+    static QRegularExpression lrcRegex(R"(\[(\d{2}:\d{2}\.\d{1,3})\](.*))");
+    QRegularExpressionMatch match;
+    qDebug()<<"读取到lrc";
+    // 5. 逐行解析
+    while (!file.atEnd()) {
+        QString line = file.readLine().trimmed(); // 去除首尾空格/换行
+        qDebug()<<line;
+        if (line.isEmpty()) continue; // 跳过空行
+
+        // 匹配正则
+        match = lrcRegex.match(line);
+        if (match.hasMatch()) {
+            // 提取时间戳和歌词内容
+            QString timeStr = match.captured(1);
+            QString content = match.captured(2).trimmed(); // 去除歌词前后空格
+            if (content.isEmpty()) continue;
+            float startTime = parseLrcTime(timeStr);
+            if (startTime <= 0) continue; // 跳过无效时间
+            lrcList.append(LrcItem(startTime, content));
+            qDebug()<<startTime<<content;
+        }
+    }
+    qDebug()<<"发送lrc"<<lrcList.length();
+    file.close();
+    emit sigLrcContent(lrcList);
 }

@@ -1,15 +1,38 @@
 #include "DownloadTool.h"
 #include "Downloadm3u8.h"
 #include <qthread.h>
+#include <QString>
 DownloadTool::DownloadTool(const QString& downloadUrl, const QString& savePath, bool dowloadM3u8,QObject* parent)
     : QObject(parent)
 {
     m_downloadUrl = downloadUrl;
+    //qDebug()<<downloadUrl;//"https://asmr.121231234.xyz/asmr6/%E8%BD%A9%E5%AD%90/0.m3u8?sign=NXCZbfLQA_Pqk1yMcgyWJgdbpoVJPJ-Wwb-UB8_Laf0=:1849492289"
+    int m3u8Pos = downloadUrl.indexOf(".m3u8");
+    if (m3u8Pos != -1) {
+        int lastSlashPos = downloadUrl.lastIndexOf('/', m3u8Pos - 1);
+        if (lastSlashPos != -1) {
+            pre_path = downloadUrl.left(lastSlashPos + 1);
+            //去除末尾的 /
+            static const QRegularExpression exp=QRegularExpression("/$");
+            pre_path = pre_path.trimmed().remove(exp);
+        }
+    }
     m_savePath    = savePath;
     dowloadM3u8_= dowloadM3u8;
 }
 
-DownloadTool::~DownloadTool() {}
+DownloadTool::~DownloadTool() {
+    httpRequestAborted = true;
+    if (reply) {
+        reply->disconnect(this);
+        reply->abort();
+    }
+    // 确保安全关闭文件
+    if (file && file->isOpen()) {
+        file->flush();  // 刷新缓冲区，避免数据丢失
+        file->close();  // 关闭文件句柄
+    }
+}
 
 void DownloadTool::startDownload()
 {
@@ -40,7 +63,6 @@ void DownloadTool::cancelDownload()
 {
     httpRequestAborted = true;
     reply->abort();
-    //reply->disconnect(this);
     emit sigCandelDownload();//取消m3u8的下载
 }
 
@@ -53,14 +75,14 @@ void DownloadTool::httpFinished()
         file->close();
         file.reset();
     }
-
     // 中断下载处理
     if (httpRequestAborted) {
+        reply->deleteLater();
         emit sigDownloadFinished("已取消下载");
         return;
     }
-
     if (reply->error()) {
+        reply->deleteLater();
         emit sigDownloadFinished("下载异常：请求对象已释放");
         return;
     }
@@ -99,8 +121,8 @@ void DownloadTool::httpFinished()
         }
         //新建一个下载线程
         QThread* downloadThread = new QThread();
-        Downloadm3u8* downloader=new Downloadm3u8();
-        emit sigProgress(0, 0, 0.01);
+        Downloadm3u8* downloader=new Downloadm3u8(pre_path);
+        emit sigProgress(0, 0, 0.001);
         downloader->moveToThread(downloadThread);
         QObject::connect(this,&DownloadTool::sigCandelDownload,this,[downloader](){
             qInfo() << "cancelDownload信号触发，强制结束合并/下载";
@@ -215,6 +237,7 @@ void DownloadTool::httpFinished()
         }
     }
     else{
+        reply->deleteLater();
         emit sigDownloadFinished("下载完成");
     }
 
@@ -229,6 +252,7 @@ void DownloadTool::httpReadyRead()
 void DownloadTool::networkReplyProgress(qint64 bytesRead, qint64 totalBytes)
 {
     qreal progress = qreal(bytesRead) / qreal(totalBytes);
+    qInfo() << QString("进度：%1/%2，当前下载：%3").arg(bytesRead).arg(totalBytes).arg(progress);
     emit sigProgress(bytesRead, totalBytes, progress);
 }
 
@@ -253,4 +277,3 @@ std::unique_ptr<QFile> DownloadTool::openFileForWrite(const QString& fileName)
     return file;
 }
 
-void DownloadTool::startDownloadM3u8(){}

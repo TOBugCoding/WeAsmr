@@ -57,15 +57,16 @@ Item {
         }
 
         onAccepted: {
-            playbackController.mediaPlayer.stop()
-            playbackController.mediaPlayer.source = fileDialog.selectedFile
-            playbackController.mediaPlayer.play()
+            let suc=playbackController.mediaPlayer.setSafeUrl(fileDialog.selectedFile,true)
+            if(!suc){
+                return;
+            }
             audioOutput.volume = playbackController.volume
 
             var fileUrl = fileDialog.selectedFile.toString()
             var fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1)
             systemIcon.tooltip = fileName
-
+            audioOutput.volume=Qt.binding(function() { return playbackController.volume })
             if (fileDialog.selectedFile.toString().includes(".m3u8") ||
                 fileDialog.selectedFile.toString().includes(".ts")) {
                 output.visible = true
@@ -83,6 +84,9 @@ Item {
         id: urlPopup
         anchors.centerIn: Overlay.overlay
         mediaPlayer: playbackController.mediaPlayer
+        onClosed: {
+            output.visible = true
+        }
     }
 
     // 紧凑化自定义按钮（缩小尺寸，节省空间）
@@ -184,7 +188,7 @@ Item {
                             }
                         }
                         Row{
-                            visible: systemIcon.tooltip!=="ASMRMOON"
+                            visible: systemIcon.tooltip!==systemIcon.appName
                             spacing: 4
                             Text{
                                 text: qsTr("当前音频:")

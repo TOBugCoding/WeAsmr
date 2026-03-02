@@ -24,8 +24,6 @@ public:
     void startDownload();  // 强制，下载文件
     void cancelDownload(); // 取消下载文件
 
-    void startDownloadM3u8();//下载m3u8文件，合并ts流
-
 signals:
     void sigProgress(qint64 bytesRead, qint64 totalBytes, qreal progress);  // 下载进度信号
     void sigDownloadFinished(QString msg);  // 下载完成信号,取消成功 下载成功
@@ -45,6 +43,7 @@ private:
 private:
     QString m_downloadUrl;  // 保存构造时传入的下载url
     QString m_savePath;     // 保存构造时传入的保存路径
+    QString pre_path;       //提取前缀
     bool dowloadM3u8_;//是否下载m3u8文件，默认false
     const QString defaultFileName = "tmp";  // 默认下载到tmp文件夹
     QUrl url;

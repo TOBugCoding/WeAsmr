@@ -167,6 +167,7 @@ Item {
                                 //搜索页数默认为1
                                 ASMRPlayer.set_page(1)
                                 leftbar.current_list_view=""
+                                ASMRPlayer.set_search_path(searchInput.text)
                                 ASMRPlayer.search_list(searchInput.text)
                         }
                     }
@@ -248,6 +249,13 @@ Item {
                                 }
                             }
                         }
+                    }
+                    //设置
+                    HoverButton{
+                        visible:false
+                        width:23
+                        height:23
+                        image_path:"qrc:/sources/image/设置.svg"
                     }
                     HoverButton{
                         image_path:"qrc:/sources/image/竖线.svg"

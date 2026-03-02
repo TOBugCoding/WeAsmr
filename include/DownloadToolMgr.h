@@ -9,7 +9,7 @@
 #include <QRegularExpression> // 新增：正则匹配更精准
 #include "DownloadTool.h"
 #include <QCoreApplication>
-
+#include "webAddr.h"
 class DownloadToolMgr:public QObject {
     Q_OBJECT
 public:
@@ -19,6 +19,7 @@ public:
     //downloadDirect
     Q_INVOKABLE void addDownloadTask(const QString& fullUrl,bool downloadDirect=false,bool downloadM3u8=false){
         //默认需要检查文件是否存在相同的，注意，这里判断的是前缀，因为m3u8对应的是ts
+        qDebug()<<fullUrl;
         QString corePath = extractCorePathFromUrl(fullUrl);
         if (corePath.isEmpty()) {
             qWarning() << "解析下载URL失败：" << fullUrl;
@@ -29,7 +30,7 @@ public:
             return;
         }
         if(!downloadM3u8){
-            emit downloadProgressUpdated(corePath, 0.01);
+            emit downloadProgressUpdated(corePath, 0.001);
         }
         if(!downloadDirect&&!downloadM3u8){
             const QUrl newUrl = QUrl::fromUserInput(fullUrl);
@@ -64,7 +65,7 @@ public:
             connect(&item->tool, &DownloadTool::sigProgress, this, [this, corePath](qint64 bytesRead, qint64 totalBytes, qreal progress) {
                 m_corePathProgressMap[corePath] = progress;
                 emit downloadProgressUpdated(corePath, progress);
-                //qDebug()<<corePath<<"receive dowload signal"<<QString::number(progress * 100, 'f', 2) << "%    ";
+                qDebug()<<corePath<<"receive dowload signal"<<QString::number(progress * 100, 'f', 2) << "%    ";
             });
 
             connect(&item->tool, &DownloadTool::sigDownloadFinished,this,[this,corePath](QString msg){
@@ -100,7 +101,7 @@ public:
     }
 
     QString extractCorePathFromUrl(const QString& fullUrl) {
-        const QString fixedPrefix = "https://mooncdn.asmrmoon.com";
+        const QString fixedPrefix = webAddr::GetInstance().getDonload();//"https://mooncdn.asmrmoon.com";
         const QString signParamFlag = "?sign=";
 
         QString path = fullUrl;
@@ -178,7 +179,8 @@ private:
         QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files);
 
         // 遍历所有文件，对比无后缀名称
-        for (const QFileInfo& fileInfo : fileList) {
+        for (const QFileInfo& fileInfo : std::as_const(fileList)) {
+            qDebug()<<fileInfo.baseName()<<targetBaseName;
             if (fileInfo.baseName() == targetBaseName) {
                 //存在ts视频且存在视频内容
                 if (fileInfo.suffix().toLower() == "ts"&&fileInfo.size() > 0) {

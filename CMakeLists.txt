@@ -40,6 +40,7 @@ set(HEADER_FILES
     include/DownloadToolMgr.h
     include/downloadm3u8.h include/downloadm3u8.cpp
     include/configMgr.h
+    include/webAddr.h
 )
 
 set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/icon.rc")

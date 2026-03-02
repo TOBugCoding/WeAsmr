@@ -231,11 +231,30 @@ Item {
                                 //检测到音频开始播放
 
                                 if(currentPlaying !== model.name){
-                                    ASMRPlayer.get_sign_path("/" + ASMRPlayer.get_path()+model.name);
-                                    console.log("播放"+"/" + ASMRPlayer.get_path()+model.name)
+                                    let purepath=ASMRPlayer.get_path()+model.name
+                                    currentPlaying = ASMRPlayer.get_path()+model.name
+                                    ASMRPlayer.set_current_playing(currentPlaying)
+                                    ASMRPlayer.get_sign_path("/" + purepath);
+                                    //console.log("播放"+"/" + purepath)
+                                    //执行lrc文件的检查，遍历model，是否有lrc文件，有则下载
+
+                                    let targetLrc=model.name.split(".").slice(0, -1).join(".")+".lrc"
+                                    if(targetLrc===model.name)return;
+                                    for (var i = 0; i < listModel.count; i++) {
+                                        // get(i) 获取第i项的所有属性
+                                        var item = listModel.get(i);
+                                        if (item.name === targetLrc) {
+                                            console.log("执行lrc下载任务"+item.name)
+                                            ASMRPlayer.download_vlc_path(ASMRPlayer.get_path()+item.name)
+                                            return
+                                        }
+                                    }
+                                    //这里可以发送找不到lrc的信息，player再判断能否正常播放，如果能就visible=false,不能就不更改了
+                                    ASMRPlayer.show_vlc(false)
+
+
                                 }
-                                currentPlaying = ASMRPlayer.get_path()+model.name
-                                ASMRPlayer.set_current_playing(currentPlaying)
+
                             }
                             // 悬停进入：启动放大动画
                             onEntered: {
@@ -404,8 +423,9 @@ Item {
                 listModel.append({ name: nameList[i].name,is_dir: nameList[i].isDir});
             }
             asmrshow_list.contentY=0
-            asmr_list_body.totalpage=ASMRPlayer.get_totalpage()
-            asmr_list_body.page=ASMRPlayer.get_page()
+            //asmr_list_body.totalpage=ASMRPlayer.get_totalpage()
+            //asmr_list_body.page=ASMRPlayer.get_page()
+            ASMRPlayer.curentHistory()
         }
         file = ASMRPlayer.get_path()
         currentPlaying=ASMRPlayer.get_current_playing()
