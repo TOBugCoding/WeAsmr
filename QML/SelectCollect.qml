@@ -5,21 +5,32 @@ import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import com.asmr.player 1.0 // 引入ASMRPlayer，调用get_all_collections
 
-// 收藏夹选择对话框
-Window {
-    id: selectDialog
+// 收藏夹选择弹窗 (Popup版本)
+Popup {
+    id: selectPopup
     // 宽度由最长文本决定，高度保持原有逻辑
     width: maxTextWidth + 40 // +40 预留边距和滚动条空间
-    height: folderListView.contentHeight>200?200+20:folderListView.contentHeight+20 //固定高度
+    height: folderListView.contentHeight > 200 ? 200 + 20 : folderListView.contentHeight + 20 // 固定高度
 
-    flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
     // 对外暴露的属性
     property string selectedFolder: "" // 选中的收藏夹名称（返回值）
     property string defaultSelected: "" // 默认选中的收藏夹名称
     property string msg;
     // 新增属性：存储最长文本的宽度
     property real maxTextWidth: 0
-    color:"#00000000"
+
+    background: Rectangle {
+        color: theme.leftBarColor
+        radius: 4
+        border.color: theme.borderColor
+        border.width: 1
+    }
+
+
+    // 收藏夹列表模型
+    ListModel {
+        id: folderModel
+    }
 
     function loadModel(){
         let folderList = ASMRPlayer.get_all_collections();
@@ -41,7 +52,7 @@ Window {
         });
     }
 
-    // 新增函数：计算指定文本的宽度（字体大小14）
+    // 计算指定文本的宽度（字体大小14）
     function calculateTextWidth(text, fontSize) {
         // 创建临时Text对象计算宽度
         let tempText = Qt.createQmlObject(`
@@ -51,44 +62,29 @@ Window {
                 font.pointSize: ${fontSize}
                 visible: false // 不可见，仅用于计算
             }
-        `, selectDialog);
+        `, selectPopup);
 
         let width = tempText.width;
         tempText.destroy(); // 销毁临时对象释放资源
         return width;
     }
 
-    Timer {
-        id: close_timer
-        interval: 1000
-        onTriggered: selectDialog.close()
-    }
-
-    // 收藏夹列表模型
-    ListModel {
-        id: folderModel
-    }
-
-    Rectangle{
-        anchors.fill:parent
-        color:theme.leftBarColor
-        radius:10
-
-        MouseArea{
-            anchors.fill:parent
-            hoverEnabled:true
-            onEntered:{close_timer.stop()}
-            onExited:{close_timer.restart()}
+    contentItem: Rectangle {
+        color: "transparent"
+        anchors.fill: parent
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
 
             ListView {
                 id: folderListView
-                anchors.fill:parent
-                anchors.margins:10
+                anchors.fill: parent
+                anchors.margins: 10
                 boundsBehavior: Flickable.StopAtBounds
-                spacing:5
-                ScrollBar.vertical:ScrollBar{
+                spacing: 5
+                ScrollBar.vertical: ScrollBar {
                     anchors.right: parent.right
-                    width:13
+                    width: 13
                 }
                 model: folderModel
                 clip: true
@@ -120,16 +116,15 @@ Window {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        hoverEnabled:true
-                        onEntered:{
+                        hoverEnabled: true
+                        onEntered: {
                             folderListView.currentIndex = index;
-                            selectDialog.selectedFolder = model.name;
+                            selectPopup.selectedFolder = model.name;
                         }
                         onClicked: {
-                            // 点击列表项选中
-                            selectDialog.close();
-                            leftbar.collect_add_message=selectDialog.selectedFolder
-                            ASMRPlayer.collect_audio(selectDialog.selectedFolder,selectDialog.msg);
+                            selectPopup.close();
+                            leftbar.collect_add_message=selectPopup.selectedFolder
+                            ASMRPlayer.collect_audio(selectPopup.selectedFolder, selectPopup.msg);
                         }
                     }
                 }
@@ -137,23 +132,41 @@ Window {
         }
     }
 
-    function close(){
-        selectDialog.visible=false
-    }
+    // 打开弹窗
+    function open(_msg) {
+        // 加载收藏夹
+        loadModel();
+        selectPopup.msg = _msg;
 
-    //打开时传入要保存的信息
-    function open(_msg){
-        //加载收藏夹
-        loadModel()
-        selectDialog.visible=false
-        selectDialog.msg=_msg
+        // 获取全局鼠标位置
+        let globalMousePos = mousePosition.cursorPos();
 
-        //初始化位置
-        let mousepos = mousePosition.cursorPos()
-        let dialogH = selectDialog.height // 弹窗自身高度
-        selectDialog.x = mousepos.x + 30
-        selectDialog.y = mousepos.y - dialogH/2
-        //显示
-        selectDialog.visible=true;
+        // 将全局坐标转换为相对于父组件的坐标
+        let localPos = selectPopup.parent.mapFromGlobal(globalMousePos.x, globalMousePos.y);
+
+        // 计算弹窗位置
+        let dialogH = selectPopup.height; // 弹窗自身高度
+        let dialogW = selectPopup.width;  // 弹窗宽度
+
+        // 计算位置：鼠标右侧偏移30像素
+        let posX = localPos.x + 30;
+        let posY = localPos.y - dialogH / 2;
+
+        // 边界检测，确保不超出父窗口
+        if (posX + dialogW > selectPopup.parent.width) {
+            posX = localPos.x - dialogW - 10; // 显示在鼠标左侧
+        }
+        if (posY < 0) {
+            posY = 0;
+        } else if (posY + dialogH > selectPopup.parent.height) {
+            posY = selectPopup.parent.height - dialogH;
+        }
+
+        // 设置位置
+        selectPopup.x = posX;
+        selectPopup.y = posY;
+
+        // 显示弹窗
+        selectPopup.visible = true;
     }
 }

@@ -5,6 +5,7 @@ import QtQuick.Dialogs
 import QuickVLC
 import QtQuick.Layouts
 import com.asmr.player 1.0
+import QtQuick.Effects
 import "control"
 import "components"
 //底部播放器，保证切换页面也不会打断asmr的播放
@@ -161,7 +162,33 @@ Item{
             id: loadingOverlay
             anchors.fill: parent
             visible: false
-            //后续添加加载动画
+            Image {
+                id:loadimage
+                anchors.centerIn: parent
+                width: topbar.fullscreen?120:50
+                height:width
+                source:"qrc:/sources/image/loading.svg"
+                visible:false
+            }
+            MultiEffect{
+                id:loadimage_effect
+                source: loadimage
+                anchors.fill: loadimage
+                brightness:theme.globalBrightness
+                colorization:0
+                colorizationColor:theme.globalColor
+                rotation:0
+                NumberAnimation {
+                   target: loadimage_effect
+                   property: "rotation"
+                   from: 0.0  // 补充起始值，避免初始undefined
+                   to: 360.0
+                   duration: 1500
+                   loops: Animation.Infinite  // 补充无限循环（加载动画需要）
+                   running: loadingOverlay.visible  // 仅显示时运行
+                   easing.type: Easing.OutCubic  // 匀速旋转，比OutInQuad更适合加载动画
+                }
+            }
         }
     }
      
@@ -298,26 +325,26 @@ Item{
         onPlaybackStateChanged:{
             console.log("播放状态："+mediaPlayer.playbackState)
             if(mediaPlayer.playbackState===1){
-                loadingOverlay.visible=true
             }
             else if(mediaPlayer.playbackState===2){
                 //播放
                 mediaPlayer.playNum=0
-                loadingOverlay.visible=false
             }
             else if(mediaPlayer.playbackState===3){
                 //暂停
             }
             else if(mediaPlayer.playbackState===4){
+                console.log("播放结束计数为"+mediaPlayer.playNum)
                 //计数position变化小于3次则播放失败
                 if(mediaPlayer.playNum<3){
                     msg.set_flag=0;
-                    msg.text = "播放失败："+ASMRPlayer.get_current_playing().split("/").pop();
+                    msg.text = "播放失败";
                     msg.image_visible = true;
                     msg.open();
                     output.visible = false
-                    mediaPlayer.stop()
-                    mediaPlayer.source = ""
+                    //mediaPlayer.stop()
+                    //mediaPlayer.source = ""
+
                 }
                 systemIcon.tooltip=systemIcon.appName
                 if(playbackController.loop){
@@ -360,9 +387,9 @@ Item{
                     //添加本地lrc的寻找，找到的话就加载到listmodel
                     ASMRPlayer.getLrc(fileNameWithoutExt);
                 }
-                mediaPlayer.stop()
-                mediaPlayer.source = url
-                mediaPlayer.play()
+                //mediaPlayer.stop()
+                mediaPlayer.source = url//这个库并不需要stop后进行play，自动播放
+                //mediaPlayer.play()
             }
             return true
         }
@@ -371,13 +398,18 @@ Item{
                 mediaPlayer.playNum++
             }
             updateCurrentLrc()
+            loadingOverlay.visible=false
         }
         onErrorOccurred: {
             console.log("错误"+errorString)
             mediaError.open(errorString)
         }
+        onSourceChanged: {
+            mediaPlayer.playNum=0
+        }
         property alias playAnim: resumeAnim
         property alias pauseAnim: pauseAnim
+        property alias loading:loadingOverlay
     }
     AudioOutput {
         id: audioOutput
@@ -474,7 +506,7 @@ Item{
     Connections{
         target: dowloadmgr
         function onM3u8Content(content){
-            let suc=mediaPlayer.setSafeUrl(path)
+            let suc=mediaPlayer.setSafeUrl(content)
             if(!suc){
                 return
             }

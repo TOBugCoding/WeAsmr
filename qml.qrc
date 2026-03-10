@@ -85,5 +85,6 @@
         <file>QML/components/EButton.qml</file>
         <file>sources/image/导入.svg</file>
         <file>sources/image/设置.svg</file>
+        <file>sources/image/loading.svg</file>
     </qresource>
 </RCC>

@@ -37,53 +37,85 @@ Item {
         Slider {
             id: slider
             Layout.fillWidth: true
-            implicitHeight:21
+            implicitHeight: 21
             enabled: seekController.mediaPlayer.seekable
-            value: seekController.mediaPlayer.position / seekController.mediaPlayer.duration
-            onMoved: seekController.mediaPlayer.position=(value * seekController.mediaPlayer.duration)
-            background:Rectangle{
-                id:silider_bg
-                height:slider.availableHeight
-                width:slider.availableWidth
-                radius:10
-                color:"gray"
+            value: (pressed||mediaPlayer.loading.visible)?visualPosition:(seekController.mediaPlayer.position / seekController.mediaPlayer.duration)
+            onPressedChanged: {
+                if (!pressed && seekController.mediaPlayer.duration > 0) {
+                    seekController.mediaPlayer.position = visualPosition * seekController.mediaPlayer.duration
+                    mediaPlayer.loading.visible = true
+                }
+            }
+            leftPadding: 0
+            rightPadding: 0
+            Component.onCompleted: {
+                console.log("leftpa"+slider.leftPadding)
+                console.log("rigtpa"+slider.rightPadding)
+            }
+
+            snapMode: Slider.SnapOnRelease
+            handle: Rectangle {
+                opacity: 0  // 视觉隐藏handle，替代宽高设0
+            }
+            background: Rectangle {
+                id: silider_bg
+                height: slider.availableHeight
+                width: slider.availableWidth
+                radius: 10
+                color: "gray"
                 opacity: theme.opacity
-                anchors.verticalCenter:parent.verticalCenter
+                anchors.verticalCenter: parent.verticalCenter
+
                 MouseArea {
+                    id: sliderMouseArea
                     enabled: seekController.mediaPlayer.seekable
                     anchors.fill: parent
                     hoverEnabled: true
+                    drag.target: null  // 仅监听位置，不实际拖动元素
+                    propagateComposedEvents: true  // 事件透传，不影响Slider的pressed状态
 
-                    onPositionChanged: function(mouse){
-                        //console.log((mouse.x/width)* seekController.mediaPlayer.duration);
-                        const hoverRatio = Math.max(0, Math.min(1, mouse.x / slider.availableWidth));
+                    function updatePreviewTime() {
+                        if (seekController.mediaPlayer.duration <= 0) return;
+                        let hoverRatio;
+                        if (slider.pressed) {
+                            hoverRatio = slider.visualPosition;
+                        }
+                        //如果是hover状态，用鼠标坐标
+                        else {
+                            hoverRatio = Math.max(0, Math.min(1, (mouseX) / (slider.width)));
+                        }
                         const targetMs = hoverRatio * seekController.mediaPlayer.duration;
                         currentTime.text = seekController.formatToMinutes(targetMs);
-                        currentTime.color = theme.green
-                        //currentTime.text=seekController.formatToMinutes((mouse.x/width)* seekController.mediaPlayer.duration)
-                    }
-                    onExited: {
-                        currentTime.text=Qt.binding(function() { return seekController.formatToMinutes(seekController.mediaPlayer.position) })
-                        currentTime.color=Qt.binding(function() { return theme.fontColor })
+                        currentTime.color = theme.green;
                     }
 
+                    // hover时更新
+                    onPositionChanged: updatePreviewTime();
+                    // 拖动时（Slider的visualPosition变化）也更新
+                    Connections {
+                        target: slider
+                        function onVisualPositionChanged() {
+                            if (slider.pressed) { // 仅拖动时更新
+                                sliderMouseArea.updatePreviewTime();
+                            }
+                        }
+                    }
+
+                    // 离开hover/结束拖动时恢复原时间
+                    onExited: {
+                        currentTime.text = Qt.binding(function() {
+                            return seekController.formatToMinutes(seekController.mediaPlayer.position)
+                        });
+                        currentTime.color = Qt.binding(function() { return theme.fontColor });
+                    }
                 }
+
                 Rectangle {
                     width: slider.visualPosition * parent.width
                     height: parent.height
                     color: theme.green
                     radius: 10
                 }
-            }
-            handle: Rectangle {
-                anchors.verticalCenter:parent.verticalCenter
-                x: slider.visualPosition * (slider.availableWidth - width)
-                y: slider.availableHeight / 2 - height / 2
-                implicitWidth: 0
-                implicitHeight: 0
-                radius: width / 2
-                color: slider.pressed ? "#f0f0f0" : "#f6f6f6"
-                border.color: "#bdbebf"
             }
         }
 

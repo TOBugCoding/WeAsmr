@@ -23,7 +23,6 @@ ApplicationWindow {
     title: ""
     color:"#00000000" //比设置background更高效，并且最好不用transparent，否则要加上Qt.WA_TranslucentBackground
     //background:Rectangle{color:"#00000000"}
-
     //页面缓存管理
     FontLoader {
         id: iconFont
@@ -67,6 +66,7 @@ ApplicationWindow {
         }
         z:2
     }
+
     SystemTrayIcon {
         property string appName:"ASMRGAY"
         id:systemIcon
@@ -78,7 +78,7 @@ ApplicationWindow {
                 icon.source: "qrc:/sources/image/感叹号.svg"
                 icon.mask: true
                 text: qsTr("退出ASMR")
-                onTriggered: Qt.quit()
+                onTriggered: {console.log("杀死进程");Qt.quit()}
             }
         }
         onActivated:function(reason) {

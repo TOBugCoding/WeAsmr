@@ -321,7 +321,7 @@ Item {
                                     visible:!model.is_dir
                                     image_path: "qrc:/sources/image/我喜欢的.svg"
                                     onClicked: { 
-										selectCollect.open(ASMRPlayer.get_path()+model.name); 
+                                        selectCollect.open(ASMRPlayer.get_path()+model.name);
                                     }
                                     Layout.preferredWidth: 24
                                     Layout.preferredHeight: 24

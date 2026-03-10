@@ -7,7 +7,7 @@ NetMusic::NetMusic(QObject* parent)
     , m_preReply(nullptr)
     ,history(nullptr)
 {
-    webAddr::GetInstance().initWebAddr(webAddr::moon);
+    webAddr::GetInstance().initWebAddr(webAddr::gay);
     history = new QList<FilePath>();
     history->append(FilePath("",1,1));
     connect(m_netManager, &QNetworkAccessManager::finished, this, &NetMusic::onReplyFinished);
@@ -415,8 +415,8 @@ void NetMusic::dislike_collect_audio(QString path, QString audioName) {
 
     // 8. 如果收藏夹中已无音频，直接移除该收藏夹；否则更新收藏夹数据
     if (newAudioList.isEmpty()) {
-        collectionArray.removeAt(targetIndex);
-        qDebug() << "收藏夹已无音频，移除该收藏夹：" << path;
+        // collectionArray.removeAt(targetIndex);
+        // qDebug() << "收藏夹已无音频，移除该收藏夹：" << path;
     } else {
         collectionArray.replace(targetIndex, targetFolder);
     }
@@ -878,8 +878,8 @@ void NetMusic::get_sign_path(const QString path){
             QStringList parts = sign_path.split("sign=");
             sign_record=parts[1];
             qDebug()<<"路径："<<sign_path;
-            QString decodedPath = QUrl::fromPercentEncoding(path.toUtf8());
-            if(decodedPath.contains("%20")&&path.contains("m3u8")){
+            QString decodedPath = QUrl::toPercentEncoding(path.toUtf8());
+            if(webAddr::GetInstance().getTargetAddr()==webAddr::moon&&decodedPath.contains("%20")&&path.contains("m3u8")){
                 emit emptyM3u8(sign_path);
                 qDebug()<<"检测到含空格的m3u8";
                 reply->deleteLater();
