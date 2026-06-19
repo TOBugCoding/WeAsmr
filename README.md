@@ -1,21 +1,45 @@
-客户端版本的asmr音频软件，源来自：https://asmrmoon.com/
-演示视频：
-https://www.bilibili.com/video/BV1Sz2yB4Ehe/?vd_source=1a9e3887d39b3ab61dda77c536c1cafe
-=======
-# WeAsmr-客户端ASMR播放器
-# 一、简介
-  WeAsmr收录ASMRMOON ASMRGAY等网站的音频资源，提供音声、视频的在线下载，支持播放列表的自定义，以极简的风格降低客户端操作难度，
-  软件使用qt6.9.3,vlc4.0进行开发，支持WIndows10/11。
-  演示视频:
-  https://www.bilibili.com/video/BV16ifgByE3L/?vd_source=1a9e3887d39b3ab61dda77c536c1cafe
-  ![image](https://github.com/TOBugCoding/gitTest/blob/main/show2.png)
+## 📖 项目简介
+  WeAsmr是一款GUI工具，基于qt进行开发，提供音声、视频的在线播放和下载，支持播放列表的自定义。
+  音频、视频源来自ASMRMOON ASMRGAY，感谢站长的分享
+  
+## 📸 截图
+| 下载 | 在线播放 |
+|:---:|:---:|
+| ![下载](https://github.com/TOBugCoding/gitTest/blob/main/show4.png) | ![在线播放](https://github.com/TOBugCoding/gitTest/blob/main/show5.png) |
 
-![image.png](https://github.com/TOBugCoding/gitTest/blob/main/show3.png)
-# 二、使用到的开源项目
-1. [MediaGun]https://github.com/MediaGun/QuickVLC/releases
-# 三、为爱发电项目，永久免费
-倘若喜欢本程序，欢迎请开发者补充一瓶营养快线。
+## 🌐 AsmrSiteServer (远程站点管理服务)
+`server/` 目录下包含一个独立的 HTTP 服务端项目 **AsmrSiteServer**，用于集中管理音声站点数据。
 
-<img src="https://github.com/TOBugCoding/gitTest/blob/main/wx.jpg" width="200" alt="微信二维码">
+### 功能说明
+- **远程管理站点列表**: 通过 REST API 动态添加、删除、查询音声资源站点
+- **多客户端共享**: 多个播放器客户端可连接同一服务器，共享站点配置
+- **Token 鉴权**: 写操作（添加/删除站点）需要 Bearer Token 认证
 
-<img src="https://github.com/TOBugCoding/gitTest/blob/main/zfb.jpg" width="200" alt="支付宝二维码">
+### API 接口
+| 方法 | 路径 | 说明 | 鉴权 |
+|:---:|:---|:---|:---:|
+| GET | `/api/sites` | 获取已启用的站点列表 | ❌ |
+| POST | `/api/sites` | 添加新站点 | ✅ |
+| DELETE | `/api/sites/:id` | 删除指定站点 | ✅ |
+
+### 配置文件 (`server.json`)
+```json
+{
+  "port": 8080,
+  "internalToken": "your-secret-token",
+  "sitesDataPath": "data/sites.json"
+}
+```
+
+### 编译运行
+```bash
+cd server
+cmake -B build
+cmake --build build
+./build/AsmrSiteServer
+```
+
+## 🙏 致谢
+- 感谢开源项目[MediaGun]https://github.com/MediaGun/QuickVLC/releases
+- 感谢所有用户的反馈和建议
+---
