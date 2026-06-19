@@ -94,6 +94,16 @@ public:
     Q_INVOKABLE bool add_collection(QString folderName);
     //删除收藏夹
     Q_INVOKABLE bool delete_collection(QString folderName);
+    //检查音频是否在"喜欢"收藏夹中
+    Q_INVOKABLE bool isLiked(const QString& audioPath);
+    //切换喜欢状态（喜欢/取消喜欢）
+    Q_INVOKABLE bool toggleLike(const QString& audioPath);
+    //获取音频的站点ID
+    Q_INVOKABLE QString getAudioSiteId(const QString& folderName, const QString& audioPath);
+    //移动音频到其他收藏夹
+    Q_INVOKABLE bool moveAudio(const QString& fromFolder, const QString& toFolder, const QString& audioPath);
+    //复制音频到其他收藏夹
+    Q_INVOKABLE bool copyAudio(const QString& fromFolder, const QString& toFolder, const QString& audioPath);
     //返回下一个音频路径
     Q_INVOKABLE QString get_audioName();
     //音频名称的 get set
@@ -101,7 +111,7 @@ public:
     //手动获取带签名的播放路径
     Q_INVOKABLE void get_sign_path(const QString path);
     //获取带签名播放路径执行下载任务
-    Q_INVOKABLE void download_sign_path(const QString path);
+    Q_INVOKABLE void download_sign_path(const QString path, const QString progressKey = "");
     //返回签名
     Q_INVOKABLE QString get_sign_record();
     //触发返回信号
@@ -128,7 +138,31 @@ public:
     Q_INVOKABLE void download_vlc_path(const QString url);
     Q_INVOKABLE void show_vlc(bool show){emit sigShowVlc(show);}
     Q_INVOKABLE QString get_vlcName(const QString path);
-
+    Q_INVOKABLE void set_webAddr(const QString addr);
+    // 网站列表远程同步
+    Q_INVOKABLE void syncSites();
+    Q_INVOKABLE void setSiteServer(const QString& url);
+    Q_INVOKABLE QStringList siteNames() const;
+    Q_INVOKABLE QString currentSiteId() const;
+    Q_INVOKABLE QString currentSiteName() const;
+    Q_INVOKABLE void setSiteByIndex(int index);
+    Q_INVOKABLE int currentSiteIndex() const;
+    Q_INVOKABLE int siteCount() const;
+    Q_INVOKABLE QString siteIdByIndex(int index) const;
+    // 启动时从配置初始化（serverUrl, lastSelectedSiteId）
+    Q_INVOKABLE void initFromConfig(const QString& serverUrl, const QString& lastSelected);
+    // 加载持久化的站点列表（JSON数组）
+    Q_INVOKABLE void loadSitesFromJson(const QJsonArray& sites);
+    // 添加站点（id, name, mainUrl），返回是否成功
+    Q_INVOKABLE bool addSite(const QString& id, const QString& name, const QString& mainUrl);
+    // 移除站点
+    Q_INVOKABLE bool removeSite(const QString& id);
+    // 获取当前站点列表的JSON（供QML持久化）
+    Q_INVOKABLE QJsonArray getSitesJson() const;
+    // 切换到指定站点
+    Q_INVOKABLE bool switchToSite(const QString& siteId);
+    // 读取本地文件内容（支持指定编码：UTF-8, GB2312, GBK）
+    Q_INVOKABLE QString readFileContent(const QString& filePath, const QString& encoding = "UTF-8");
 signals:
     //load_audio完成后触发信号 发送QList给qml进行加载
     //key:收藏夹名称
@@ -145,12 +179,14 @@ signals:
     //监听收藏夹变更，这2个信号作用是一样的，暂且不管
     void collectChanged();
     void collect_file_changed();
+    //喜欢状态变更
+    void likedChanged();
     //当前播放的音频更改
     void current_playing_changed();
     //传给qml代签名的路径
     void signPathReceived(QString path);
     //触发下载信号
-    void downloadPathReceived(QString path);
+    void downloadPathReceived(QString path, QString progressKey);
     //出错提示
     void errorDetail(QString msg);
     //检测到含空格的m3u8文件
@@ -160,6 +196,10 @@ signals:
     //发送lrc歌词
     void sigLrcContent(const QVector<LrcItem>& List);
     void sigShowVlc(bool show);
+    // 网站列表同步信号
+    void sitesReceived();
+    void sitesSyncFailed(const QString& error);
+    void currentSiteChanged();
 
 private slots:
     //统一返回接口
@@ -191,6 +231,8 @@ private:
     //区分调用哪个网络接口
     netType replymode = netType::asmr_list_type;
     std::mutex netlock;
+    // 网站同步服务器地址
+    QString m_siteServerUrl;
     //区分函数调用
     //asmr_list网络回调
     void net_asmr_list(QNetworkReply* m_currentReply);

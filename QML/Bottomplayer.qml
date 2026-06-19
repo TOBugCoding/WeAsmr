@@ -8,6 +8,7 @@ import com.asmr.player 1.0
 import QtQuick.Effects
 import "control"
 import "components"
+import "components/MediaUtils.js" as MediaUtils
 //底部播放器，保证切换页面也不会打断asmr的播放
 Item{
     id:root
@@ -169,6 +170,8 @@ Item{
                 height:width
                 source:"qrc:/sources/image/loading.svg"
                 visible:false
+                mipmap: true
+                smooth: true
             }
             MultiEffect{
                 id:loadimage_effect
@@ -191,8 +194,18 @@ Item{
             }
         }
     }
-     
-	
+
+    // 文件预览独立窗口（本地图片备用）
+    FilePreview {
+        id: filePreview
+        targetWindow: mainWindow
+    }
+
+    // WebEngine 文件预览窗口（使用 kkfileview）
+    WebPreview {
+        id: webPreview
+        targetWindow: mainWindow
+    }
 
     // 鼠标活动监听：只作用于右侧容器（视频+控制区）
     // Bottomplayer.qml 中的 MouseArea 部分
@@ -314,12 +327,6 @@ Item{
     MediaPlayer {
         property bool lrcshow:true
         property int playNum:0
-        property var validMediaFormats: [
-                // 音频格式
-                "mp3", "wav", "flac", "aac", "ogg", "m4a", "wma",
-                // 视频格式
-                "mp4", "avi", "mov", "mkv", "flv", "wmv", "mpeg", "mpg","m3u8","ts","3gp"
-            ]
         id: mediaPlayer
         audioOutput: audioOutput
         onPlaybackStateChanged:{
@@ -363,11 +370,10 @@ Item{
                 return;
             }
             var sourcePath = url.toString()
-            var fileExt = sourcePath.split(".").pop().toLowerCase()
-            var purePath = fileExt.split("?")[0];//提取视频格式
             var fileNameWithoutExt = sourcePath.split(".").slice(0, -1).join(".")+".lrc"
             // 检查后缀是否在合法格式列表中
-            if (!validMediaFormats.includes(purePath)) {
+            if (!MediaUtils.isMediaFile(sourcePath)) {
+                var purePath = sourcePath.split("?")[0].split("/").pop().split(".").pop().toLowerCase()
                 console.log("不支持的媒体格式：" + purePath)
                 msg.text = "不支持的格式：" + purePath + "，请选择音视频文件"
                 msg.open()
@@ -443,6 +449,21 @@ Item{
     Connections {
         target: ASMRPlayer
         function onSignPathReceived(path){
+            // 非音视频文件：走预览逻辑
+            if(!MediaUtils.isMediaFile(path.toString())){
+                var fileName = path.toString().split("/").pop().split("?")[0]
+                console.log("预览链接:", path.toString())
+
+                if(path.startsWith("file:///")){
+                    // 本地文件：使用系统默认程序打开
+                    Qt.openUrlExternally(path.toString())
+                } else {
+                    // 远程文件：使用 kkfileview 预览
+                    webPreview.openPreview(path.toString(), fileName)
+                }
+                return
+            }
+
             let suc
             if(path.startsWith("file:///")){
                 //本地路径自带lrc判断
@@ -458,26 +479,30 @@ Item{
                 return
             }
 
+            // 播放媒体文件时关闭文件预览
+            filePreview.close()
+            webPreview.close()
+
             audioOutput.volume=playbackController.volume
-            if(path.toString().includes(".m3u8")||path.toString().includes(".ts")){
+            if (MediaUtils.isVideoFile(path.toString())) {
                 output.visible = true
-                playbackController.slider_bg=0
+                playbackController.slider_bg = 0
             } else {
                 output.visible = false
-                playbackController.slider_bg=theme.opacity
+                playbackController.slider_bg = theme.opacity
             }
             systemIcon.tooltip=ASMRPlayer.get_current_playing()
             loadingOverlay.visible=true
             audioOutput.volume=Qt.binding(function() { return playbackController.volume })
         }
-        function onDownloadPathReceived(path){
+        function onDownloadPathReceived(path, progressKey){
             //执行下载任务
             if(!path){
                 msg.text = "找不到音频源，请切换网站"
                 msg.open()
                 return;
             }
-            dowloadmgr.addDownloadTask(path);
+            dowloadmgr.addDownloadTask(path, false, false, progressKey);
             //下载完成由leftbar中的消息框进行提示
         }
         function onEmptyM3u8(path){

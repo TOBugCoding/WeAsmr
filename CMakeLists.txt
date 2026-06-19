@@ -21,6 +21,7 @@ find_package(Qt6 6.9 REQUIRED COMPONENTS
     Qml
     Quick
     Network
+    WebEngineQuick
 )
 
 
@@ -65,6 +66,7 @@ target_link_libraries(WeAsmrPlayer PRIVATE
     Qt6::Qml
     Qt6::Quick
     Qt6::Network
+    Qt6::WebEngineQuick
     "E:/QT/6.9.3/msvc2022_64/lib/libvlc.lib"
     "E:/QT/6.9.3/msvc2022_64/lib/libvlccore.lib"
     "E:/QT/6.9.3/msvc2022_64/lib/QuickVLCCore.lib"

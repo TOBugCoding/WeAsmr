@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QJsonObject>
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QFile>
 #include <QStandardPaths>
 #include <QDir>
@@ -60,6 +61,61 @@ public:
         writeConfigFile(config);
     }
 
+    // QML可调用：读取站点配置（serverUrl + lastSelected）
+    Q_INVOKABLE inline QJsonObject getSiteConfig() {
+        QJsonObject config = readConfigFile();
+        if (config.contains("site") && config["site"].isObject()) {
+            return config["site"].toObject();
+        } else {
+            QJsonObject defaultSite;
+            defaultSite["serverUrl"] = "";
+            defaultSite["lastSelected"] = "selfWeb";
+            return defaultSite;
+        }
+    }
+
+    // QML可调用：保存站点配置
+    Q_INVOKABLE inline void saveSiteConfig(const QString& serverUrl, const QString& lastSelected) {
+        QJsonObject config = readConfigFile();
+        QJsonObject siteConfig;
+        siteConfig["serverUrl"] = serverUrl;
+        siteConfig["lastSelected"] = lastSelected;
+        config["site"] = siteConfig;
+        writeConfigFile(config);
+    }
+
+    // QML可调用：保存站点列表（持久化）
+    Q_INVOKABLE inline void saveSites(const QJsonArray& sites) {
+        QJsonObject config = readConfigFile();
+        config["sites"] = sites;
+        writeConfigFile(config);
+    }
+
+    // QML可调用：读取持久化的站点列表
+    Q_INVOKABLE inline QJsonArray getSites() {
+        QJsonObject config = readConfigFile();
+        if (config.contains("sites") && config["sites"].isArray()) {
+            return config["sites"].toArray();
+        }
+        return QJsonArray();
+    }
+
+    // QML可调用：读取 kkfileview 服务器地址
+    Q_INVOKABLE inline QString getKkfileServer() {
+        QJsonObject config = readConfigFile();
+        if (config.contains("kkfileServer") && config["kkfileServer"].isString()) {
+            return config["kkfileServer"].toString();
+        }
+        return "http://47.96.159.221:8012";  // 默认地址
+    }
+
+    // QML可调用：保存 kkfileview 服务器地址
+    Q_INVOKABLE inline void saveKkfileServer(const QString& serverUrl) {
+        QJsonObject config = readConfigFile();
+        config["kkfileServer"] = serverUrl;
+        writeConfigFile(config);
+    }
+
 
 private:
     // 初始化配置文件（inline内联）
@@ -73,6 +129,11 @@ private:
             defaultTheme["dowloadColor"] = "#00C4B3";
             defaultTheme["globalColor"] = "#00C4B3";
             defaultConfig["theme"] = defaultTheme;
+
+            QJsonObject defaultSite;
+            defaultSite["serverUrl"] = "";
+            defaultSite["lastSelected"] = "selfWeb";
+            defaultConfig["site"] = defaultSite;
 
             writeConfigFile(defaultConfig);
         }

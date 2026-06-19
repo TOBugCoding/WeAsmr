@@ -25,7 +25,11 @@ DownloadTool::~DownloadTool() {
     httpRequestAborted = true;
     if (reply) {
         reply->disconnect(this);
-        reply->abort();
+        if (!reply->isFinished()) {
+            reply->abort();
+        }
+        reply->deleteLater();
+        reply = nullptr;
     }
     // 确保安全关闭文件
     if (file && file->isOpen()) {
@@ -62,7 +66,22 @@ void DownloadTool::startDownload()
 void DownloadTool::cancelDownload()
 {
     httpRequestAborted = true;
-    reply->abort();
+    if (reply) {
+        reply->disconnect(this); // 断开 httpFinished，避免同步触发完整处理链
+        // 关闭文件
+        if (file && file->isOpen()) {
+            file->close();
+        }
+        // 连接简化的清理槽：abort()同步触发finished，确保sigDownloadFinished被发射
+        connect(reply, &QNetworkReply::finished, this, [this]() {
+            if (reply) {
+                reply->deleteLater();
+                reply = nullptr;
+            }
+            emit sigDownloadFinished("已取消下载");
+        });
+        reply->abort();
+    }
     emit sigCandelDownload();//取消m3u8的下载
 }
 
@@ -77,7 +96,10 @@ void DownloadTool::httpFinished()
     }
     // 中断下载处理
     if (httpRequestAborted) {
-        reply->deleteLater();
+        if (reply) {
+            reply->deleteLater();
+            reply = nullptr;
+        }
         emit sigDownloadFinished("已取消下载");
         return;
     }

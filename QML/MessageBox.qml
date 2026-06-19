@@ -88,6 +88,8 @@ Window{
                     fillMode: Image.PreserveAspectFit
                     source:"qrc:/sources/image/感叹号.svg"
                     verticalAlignment: Image.AlignVCenter
+                    mipmap: true
+                    smooth: true
                 }
                 Text{
                     //Layout.fillWidth: true

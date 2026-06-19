@@ -1,0 +1,11 @@
+# ninja log v6
+58	1011	8032356373693124	AsmrSiteServer_autogen/timestamp	416ede53623cd5d
+58	1011	8032356373693124	AsmrSiteServer_autogen/mocs_compilation.cpp	416ede53623cd5d
+58	1011	8032356373693124	E:/QT_projct/WeAsmrPlayer_gay/server/build/Desktop_Qt_6_9_3_MSVC2022_64bit-Debug/AsmrSiteServer_autogen/timestamp	416ede53623cd5d
+58	1011	8032356373693124	E:/QT_projct/WeAsmrPlayer_gay/server/build/Desktop_Qt_6_9_3_MSVC2022_64bit-Debug/AsmrSiteServer_autogen/mocs_compilation.cpp	416ede53623cd5d
+1032	13433	8032356375712045	CMakeFiles/AsmrSiteServer.dir/src/main.cpp.obj	2505f4f2d1ffaa2b
+1024	13464	8032356375609657	CMakeFiles/AsmrSiteServer.dir/AsmrSiteServer_autogen/mocs_compilation.cpp.obj	b10502b6f0ee406d
+1060	13496	8032356375994700	CMakeFiles/AsmrSiteServer.dir/src/http_server.cpp.obj	d56035503b0fdf9e
+1041	14159	8032356375815430	CMakeFiles/AsmrSiteServer.dir/src/config.cpp.obj	6a74e5b64ce899b3
+1050	14683	8032356375864557	CMakeFiles/AsmrSiteServer.dir/src/site_manager.cpp.obj	3522d0cc55678faa
+14683	15499	8032356512229658	AsmrSiteServer.exe	1e1eabc76261850c

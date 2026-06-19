@@ -1,0 +1,78 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "AsmrSiteServer",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "AsmrSiteServer::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-AsmrSiteServer-Debug-427083191a7786095a56.json",
+					"name" : "AsmrSiteServer",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "AsmrSiteServer_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-AsmrSiteServer_autogen-Debug-ca1e34c9d8041e6bed5c.json",
+					"name" : "AsmrSiteServer_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "AsmrSiteServer_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-AsmrSiteServer_autogen_timestamp_deps-Debug-9ece7c73b0bfd3d8de84.json",
+					"name" : "AsmrSiteServer_autogen_timestamp_deps",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "E:/QT_projct/WeAsmrPlayer_gay/server/build/Desktop_Qt_6_9_3_MSVC2022_64bit-Debug",
+		"source" : "E:/QT_projct/WeAsmrPlayer_gay/server"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}

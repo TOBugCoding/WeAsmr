@@ -69,6 +69,7 @@
         <file>QML/content/SearchShowPage.qml</file>
         <file>sources/image/垃圾桶.svg</file>
         <file>QML/MessageBox.qml</file>
+        <file>QML/SettingsPopup.qml</file>
         <file>sources/image/感叹号.svg</file>
         <file>sources/image/圆角矩形.svg</file>
         <file>sources/image/下载.svg</file>
@@ -82,7 +83,11 @@
         <file>sources/image/loop.svg</file>
         <file>sources/image/全屏.svg</file>
         <file>QML/components/ELoader.qml</file>
+        <file>QML/components/AudioListItem.qml</file>
         <file>QML/components/EButton.qml</file>
+        <file>QML/components/MediaUtils.js</file>
+        <file>QML/components/FilePreview.qml</file>
+        <file>QML/components/WebPreview.qml</file>
         <file>sources/image/导入.svg</file>
         <file>sources/image/设置.svg</file>
         <file>sources/image/loading.svg</file>

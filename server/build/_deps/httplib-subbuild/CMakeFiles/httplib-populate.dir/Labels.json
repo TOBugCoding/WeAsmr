@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/CMakeFiles/httplib-populate"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/CMakeFiles/httplib-populate.rule"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/CMakeFiles/httplib-populate-complete.rule"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/httplib-populate-prefix/src/httplib-populate-stamp/httplib-populate-build.rule"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/httplib-populate-prefix/src/httplib-populate-stamp/httplib-populate-configure.rule"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/httplib-populate-prefix/src/httplib-populate-stamp/httplib-populate-download.rule"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/httplib-populate-prefix/src/httplib-populate-stamp/httplib-populate-install.rule"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/httplib-populate-prefix/src/httplib-populate-stamp/httplib-populate-mkdir.rule"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/httplib-populate-prefix/src/httplib-populate-stamp/httplib-populate-patch.rule"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/httplib-populate-prefix/src/httplib-populate-stamp/httplib-populate-test.rule"
+		},
+		{
+			"file" : "/mnt/e/QT_projct/WeAsmrPlayer_gay/server/build/_deps/httplib-subbuild/httplib-populate-prefix/src/httplib-populate-stamp/httplib-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"httplib-populate"
+		],
+		"name" : "httplib-populate"
+	}
+}

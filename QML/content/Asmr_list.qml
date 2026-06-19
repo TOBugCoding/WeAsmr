@@ -9,6 +9,7 @@ import com.asmr.player 1.0
 import "../control"
 import "../"
 import "../components"
+import "../components/MediaUtils.js" as MediaUtils
 Item {
     id: asmr_list_body
     opacity: 0
@@ -195,195 +196,68 @@ Item {
                     loadingOverlay.visible = (count === 0);
                 }
             }
-            delegate: Item {
-                id: listItem // 列表项根容器（尺寸固定，不参与缩放）
-                width: asmrshow_list.width-30
-                height: 50 // 固定高度，不随缩放变化
-                // 核心：内部可缩放容器（视觉放大，不影响布局）
-                property real downloadProgress: dowloadmgr.getDownloadProgress("/" + ASMRPlayer.get_path()+model.name)
-                Item {
-                    id: scaleContainer
-                    anchors.fill: parent
-                    transformOrigin: Item.Center
-                    scale: 1.0 // 默认缩放比例
-                    
-                    // 背景容器（当前播放项高亮）
-                    Item {
-                        anchors.fill: parent
-                        // 鼠标区域覆盖整个缩放容器
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if(model.is_dir){
-                                    file = ASMRPlayer.get_path() + model.name + "/";
-                                    let next_path=ASMRPlayer.get_path() + model.name;
-                                    ASMRPlayer.set_page(1);//set_page会自动刷新
-                                    ASMRPlayer.asmr_list(next_path, true);
-                                    if(file){
-                                        ASMRPlayer.pushHistory(file,page,totalpage);
-                                    }else{
-                                        ASMRPlayer.pushHistory("",page,totalpage);
-                                    }
-                                    return;
-                                }
-                                //检测到音频开始播放
+            delegate: AudioListItem {
+                id: listItem
+                itemName: model.name
+                downloadUrl: "/" + ASMRPlayer.get_path() + model.name
+                cancelUrl: "/" + ASMRPlayer.get_path() + model.name
+                currentPlaying: asmr_list_body.currentPlaying
+                playingComparePath: ASMRPlayer.get_path() + model.name
 
-                                if(currentPlaying !== model.name){
-                                    let purepath=ASMRPlayer.get_path()+model.name
-                                    currentPlaying = ASMRPlayer.get_path()+model.name
-                                    ASMRPlayer.set_current_playing(currentPlaying)
-                                    ASMRPlayer.get_sign_path("/" + purepath);
-                                    //console.log("播放"+"/" + purepath)
-                                    //执行lrc文件的检查，遍历model，是否有lrc文件，有则下载
-
-                                    let targetLrc=model.name.split(".").slice(0, -1).join(".")+".lrc"
-                                    if(targetLrc===model.name)return;
-                                    for (var i = 0; i < listModel.count; i++) {
-                                        // get(i) 获取第i项的所有属性
-                                        var item = listModel.get(i);
-                                        if (item.name === targetLrc) {
-                                            console.log("执行lrc下载任务"+item.name)
-                                            ASMRPlayer.download_vlc_path(ASMRPlayer.get_path()+item.name)
-                                            return
-                                        }
-                                    }
-                                    //这里可以发送找不到lrc的信息，player再判断能否正常播放，如果能就visible=false,不能就不更改了
-                                    ASMRPlayer.show_vlc(false)
-
-
-                                }
-
-                            }
-                            // 悬停进入：启动放大动画
-                            onEntered: {
-                                if (scaleRestoreAnim.running) scaleRestoreAnim.stop()
-                                if (!scaleGrowAnim.running) scaleGrowAnim.start()
-                                bgRect.color=theme.fontColor
-                            }
-                        
-                            // 悬停离开：启动恢复动画
-                            onExited: {
-                                if (scaleGrowAnim.running) scaleGrowAnim.stop()
-                                if (!scaleRestoreAnim.running) scaleRestoreAnim.start()
-                                bgRect.color="#00000000"
-                            }
-                        
-                            // 放大动画（缩放比例从1→1.02）
-                            PropertyAnimation {
-                                id: scaleGrowAnim
-                                target: scaleContainer
-                                property: "scale"
-                                from: 1.0
-                                to: 1.02 // 放大1.05倍（建议1.0~1.1，避免过度放大）
-                                duration: 200
-                                easing.type: Easing.OutQuad
-                            }
-                        
-                            // 恢复动画（缩放比例回到1）
-                            PropertyAnimation {
-                                id: scaleRestoreAnim
-                                target: scaleContainer
-                                property: "scale"
-                                from: scaleContainer.scale
-                                to: 1.0
-                                duration: 200
-                                easing.type: Easing.OutQuad
-                            }
-                            Rectangle{
-                                anchors.fill: parent
-                                color: "#00000000"
-                                opacity:0.2
-                                radius: 4
-                                id: bgRect
-                            }
-                            Rectangle{
-                                id:dowloadShow
-                                property real dowloadprogress: listItem.downloadProgress
-                                color: theme.dowloadColor
-                                opacity:0.8
-                                radius: 4
-                                anchors.left:parent.left
-                                anchors.top:parent.top
-                                anchors.bottom: parent.bottom
-                                width: dowloadprogress * parent.width
-                                visible: (model.is_dir || dowloadprogress <= 0.0||dowloadprogress==1) ? 0 : 1
-                                Behavior on width {
-                                    NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
-                                }
-                            }
-                            RowLayout {
-                                anchors.fill: parent
-                                spacing: 15
-                                //添加到收藏列表
-                                HoverButton {
-                                    visible:!model.is_dir
-                                    image_path: "qrc:/sources/image/我喜欢的.svg"
-                                    onClicked: { 
-                                        selectCollect.open(ASMRPlayer.get_path()+model.name);
-                                    }
-                                    Layout.preferredWidth: 24
-                                    Layout.preferredHeight: 24
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                HoverButton {
-                                    visible:!model.is_dir
-                                    image_path: "qrc:/sources/image/下载.svg"
-                                    onClicked: {
-                                        ASMRPlayer.download_sign_path("/" + ASMRPlayer.get_path()+model.name);
-                                    }
-                                    Layout.preferredWidth: 24
-                                    Layout.preferredHeight: 24
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                //非音频，仅显示文件夹样式图标
-                                HoverButton {
-                                    visible:model.is_dir
-                                    image_path: "qrc:/sources/image/文件夹.svg"
-                                    Layout.preferredWidth: 24
-                                    Layout.preferredHeight: 24
-                                    Layout.alignment: Qt.AlignVCenter
-                                    can_hover:false
-                                }
-                                Text {
-                                    text: model.name
-                                    font.pixelSize: 16
-                                    color: currentPlaying === ASMRPlayer.get_path()+model.name ? theme.green : theme.fontColor
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                    Layout.leftMargin: 0
-                                }
-
-                            }
-                            HoverButton {
-                                anchors.right: parent.right
-                                anchors.rightMargin: 20
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible:(listItem.downloadProgress!=0)&&(listItem.downloadProgress!=1)
-                                image_path: "qrc:/sources/image/取消下载.svg"
-                                onClicked: {
-                                    dowloadmgr.candelDownload("/" + ASMRPlayer.get_path()+model.name);
-                                }
-                                Layout.preferredWidth: 24
-                                Layout.preferredHeight: 24
-                                Layout.alignment: Qt.AlignVCenter
+                handleClick: function(mouse) {
+                    if (model.is_dir) {
+                        file = ASMRPlayer.get_path() + model.name + "/"
+                        let next_path = ASMRPlayer.get_path() + model.name
+                        ASMRPlayer.set_page(1)
+                        ASMRPlayer.asmr_list(next_path, true)
+                        if (file) {
+                            ASMRPlayer.pushHistory(file, page, totalpage)
+                        } else {
+                            ASMRPlayer.pushHistory("", page, totalpage)
+                        }
+                        return
+                    }
+                    var isMedia = MediaUtils.isMediaFile(model.name)
+                    let purepath = ASMRPlayer.get_path() + model.name
+                    let isSameFile = (currentPlaying === purepath)
+                    if (!isMedia) {
+                        ASMRPlayer.get_sign_path("/" + purepath)
+                        return
+                    }
+                    currentPlaying = purepath
+                    ASMRPlayer.set_current_playing(currentPlaying)
+                    if (!isSameFile) {
+                        ASMRPlayer.get_sign_path("/" + purepath)
+                        let targetLrc = model.name.split(".").slice(0, -1).join(".") + ".lrc"
+                        if (targetLrc === model.name) return
+                        for (var i = 0; i < listModel.count; i++) {
+                            var item = listModel.get(i)
+                            if (item.name === targetLrc) {
+                                ASMRPlayer.download_vlc_path(ASMRPlayer.get_path() + item.name)
+                                return
                             }
                         }
-
-
+                        ASMRPlayer.show_vlc(false)
                     }
-                    Connections {
-                        target: dowloadmgr
-                        function onDownloadProgressUpdated(url, progress) {
-                            const currentUrl = "/" + ASMRPlayer.get_path()+model.name;
-                            if (url === currentUrl) {
-                                listItem.downloadProgress = progress;
-                            }
-                        }
-                    }
-                    
+                }
+
+                HoverButton {
+                    visible: !model.is_dir
+                    image_path: "qrc:/sources/image/我喜欢的.svg"
+                    onClicked: selectCollect.open(ASMRPlayer.get_path() + model.name)
+                    width: 24; height: 24
+                }
+                HoverButton {
+                    visible: !model.is_dir
+                    image_path: "qrc:/sources/image/下载.svg"
+                    onClicked: ASMRPlayer.download_sign_path("/" + ASMRPlayer.get_path() + model.name, "/" + ASMRPlayer.get_path() + model.name)
+                    width: 24; height: 24
+                }
+                HoverButton {
+                    visible: model.is_dir
+                    image_path: "qrc:/sources/image/文件夹.svg"
+                    can_hover: false
+                    width: 24; height: 24
                 }
             }
         }
@@ -403,9 +277,8 @@ Item {
             anchors.fill: parent
             visible: false
             ELoader {
-                anchors.centerIn:loadingOverlay
+                anchors.centerIn: parent
                 size: 50
-                x: 150
                 speed: 0.8
             }
         }

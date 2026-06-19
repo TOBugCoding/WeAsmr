@@ -9,6 +9,7 @@
 #include <QRegularExpression> // 新增：正则匹配更精准
 #include "DownloadTool.h"
 #include <QCoreApplication>
+#include <QTimer>
 #include "webAddr.h"
 class DownloadToolMgr:public QObject {
     Q_OBJECT
@@ -17,10 +18,10 @@ public:
     explicit DownloadToolMgr(QObject* parent = nullptr){}
     //这里可以自己判断是否存在相同的文件名，一旦存在，就将fullUrl先传递给前端，确定后直接执行
     //downloadDirect
-    Q_INVOKABLE void addDownloadTask(const QString& fullUrl,bool downloadDirect=false,bool downloadM3u8=false){
+    Q_INVOKABLE void addDownloadTask(const QString& fullUrl,bool downloadDirect=false,bool downloadM3u8=false,const QString& progressKey=""){
         //默认需要检查文件是否存在相同的，注意，这里判断的是前缀，因为m3u8对应的是ts
         qDebug()<<fullUrl;
-        QString corePath = extractCorePathFromUrl(fullUrl);
+        QString corePath = progressKey.isEmpty() ? extractCorePathFromUrl(fullUrl) : progressKey;
         if (corePath.isEmpty()) {
             qWarning() << "解析下载URL失败：" << fullUrl;
             return;
@@ -85,8 +86,17 @@ public:
             // 精准匹配核心路径
             if (p->corePath == targetCorePath) {
                 //取消下载仅对 对象进行告知，对象处理完成后返回sigDownloadFinished
-                p->tool.cancelDownload();
-                emit downloadProgressUpdated(p->corePath, 0.0);
+                // 使用QTimer延迟执行，避免reply->abort()同步触发httpFinished()导致delete p后还在使用p
+                QString corePath = p->corePath;
+                QTimer::singleShot(0, this, [this, corePath]() {
+                    for (auto it = DowloadContainer.constBegin(); it != DowloadContainer.constEnd(); ++it) {
+                        if ((*it)->corePath == corePath) {
+                            (*it)->tool.cancelDownload();
+                            return;
+                        }
+                    }
+                });
+                emit downloadProgressUpdated(corePath, 0.0);
                 return;
             }
         }
@@ -101,20 +111,8 @@ public:
     }
 
     QString extractCorePathFromUrl(const QString& fullUrl) {
-        const QString fixedPrefix = webAddr::GetInstance().getDonload();//"https://mooncdn.asmrmoon.com";
-        const QString signParamFlag = "?sign=";
-
-        QString path = fullUrl;
-        // 移除固定前缀
-        if (path.startsWith(fixedPrefix)) {
-            path = path.mid(fixedPrefix.length());
-        }
-
-        // 移除sign参数
-        int signIndex = path.indexOf(signParamFlag);
-        if (signIndex != -1) {
-            path = path.left(signIndex);
-        }
+        QUrl url(fullUrl);
+        QString path = url.path();
 
         // URL解码：将%XX格式转为原始中文
         path = QUrl::fromPercentEncoding(path.toUtf8());

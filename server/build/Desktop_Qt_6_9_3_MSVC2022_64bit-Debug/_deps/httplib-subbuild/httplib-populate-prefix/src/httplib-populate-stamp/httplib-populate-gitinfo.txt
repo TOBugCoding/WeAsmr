@@ -1,0 +1,15 @@
+# This is a generated file and its contents are an internal implementation detail.
+# The download step will be re-executed if anything in this file changes.
+# No other meaning or use of this file is supported.
+
+method=git
+command=E:/QT/Tools/CMake_64/bin/cmake.exe;-P;E:/QT_projct/WeAsmrPlayer_gay/server/build/Desktop_Qt_6_9_3_MSVC2022_64bit-Debug/_deps/httplib-subbuild/httplib-populate-prefix/tmp/httplib-populate-gitclone.cmake
+source_dir=E:/QT_projct/WeAsmrPlayer_gay/server/build/Desktop_Qt_6_9_3_MSVC2022_64bit-Debug/_deps/httplib-src
+work_dir=E:/QT_projct/WeAsmrPlayer_gay/server/build/Desktop_Qt_6_9_3_MSVC2022_64bit-Debug/_deps
+repository=https://github.com/yhirose/cpp-httplib.git
+remote=origin
+init_submodules=TRUE
+recurse_submodules=--recursive
+submodules=
+CMP0097=NEW
+

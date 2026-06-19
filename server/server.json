@@ -1,0 +1,5 @@
+{
+    "internalToken": "change-me-to-a-secret-token",
+    "port": 8080,
+    "sitesDataPath": "data/sites.json"
+}

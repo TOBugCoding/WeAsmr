@@ -13,9 +13,9 @@ Item {
     property alias muted: muteButton.checked
     property real volume: slider.value
     //! [0]
-    property alias showSlider: slider.visible
+    property bool showSlider: true
     property int iconDimension: 24
-    property int slider_duraiton:100
+    property int sliderDuration:100
     implicitHeight: 46
     implicitWidth: mainLayout.width
 
@@ -37,18 +37,13 @@ Item {
             checkable: true
             background: Rectangle {
                 color: "transparent"
-                MouseArea{
-                    anchors.fill:parent
-                    hoverEnabled:true
-                    cursorShape: Qt.PointingHandCursor
-                }
             }
         }
 
         Slider {
             id: slider
-            visible: !audioController.showSlider
-            implicitWidth: audioController.slider_duraiton
+            visible: audioController.showSlider
+            implicitWidth: audioController.sliderDuration
             implicitHeight:18
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter

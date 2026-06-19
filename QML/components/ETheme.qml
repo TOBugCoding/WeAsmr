@@ -29,15 +29,15 @@ QtObject {
     // === 顶部栏和左侧栏颜色 ===
     property color globalColor: "#00C4B3"   // 默认响应颜色
     property var globalBrightness:isDark ?1:0
-    property color contentColor:isDark ?"#1E1E20":"#dbdbdb"   //主题色#FAFAFA
-    property color leftBarColor:isDark?"#171718": "#d2d2d2"  //深的主题色#F6F6F6
+    property color contentColor:isDark ?"#2C2C30":"#dbdbdb"   //主题色#FAFAFA
+    property color leftBarColor:isDark?"#222225": "#d2d2d2"  //深的主题色#F6F6F6
     property color fontColor:isDark?"white":"black"
     property color samllTitleColor:isDark?"white":"black"
     property color highlightColor:isDark?"white":"black"
     property color green:"#00C4B3"
     // === 基础颜色 ===
-    property color primaryColor: isDark ? "#121212" : "#ffffff"
-    property color secondaryColor: isDark ? "#212121" : "#E9EEF6"
+    property color primaryColor: isDark ? "#1C1C20" : "#ffffff"
+    property color secondaryColor: isDark ? "#2A2A2E" : "#E9EEF6"
     property color textColor: isDark ? "#ffffff" : "#000000"
     property color borderColor: isDark ? "#666666" : "#cccccc"
     property color blurOverlayColor: isDark ? "#4E000000" : "#4EFFFFFF"

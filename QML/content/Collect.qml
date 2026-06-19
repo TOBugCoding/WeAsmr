@@ -7,12 +7,13 @@ import QtQuick.Dialogs
 import "../control"
 import "../"
 import "../components"
+import "../components/MediaUtils.js" as MediaUtils
 Item {
     opacity:0
     id: collectPage
     property string currentPlaying: ""
     property string currentCollectFile:ASMRPlayer.get_collect_file()
-    property string dislicke_ensure_path:""
+    property string dislike_ensure_path:""
     // 连接加载完成信号
     Connections {
         target: ASMRPlayer
@@ -23,8 +24,8 @@ Item {
             for (let i = 0; i < audioList.length; i++) {
                 audioListModel.append({
                     audioPath: audioList[i],
-                    // 可选：提取音频名称（截取最后一个/后的部分）
-                    name: audioList[i].split("/").pop()
+                    name: audioList[i].split("/").pop(),
+                    is_dir: false
                 });
             }
             //console.log("收藏夹加载完成，共" + audioList.length + "首音频");
@@ -47,7 +48,7 @@ Item {
         id: dislicke_ensure
         set_flag:0+1
         onEnsure:{
-            ASMRPlayer.dislike_collect_audio(collectPage.currentCollectFile,collectPage.dislicke_ensure_path);
+            ASMRPlayer.dislike_collect_audio(collectPage.currentCollectFile,collectPage.dislike_ensure_path);
             //刷新收藏夹
             ASMRPlayer.set_collect_file(collectPage.currentCollectFile,true)
         }
@@ -136,173 +137,287 @@ Item {
                     loadingOverlay.visible = (count === 0);
                 }
             }
-            delegate: Item {
-                id: listItem // 列表项根容器（尺寸固定，不参与缩放）
-                width: asmrshow_list.width-30
-                height: 50 // 固定高度，不随缩放变化
-                // 核心：内部可缩放容器（视觉放大，不影响布局）
-                property real downloadProgress: dowloadmgr.getDownloadProgress("/" + model.audioPath)
-                Item {
-                    id: scaleContainer
-                    anchors.fill: parent
-                    transformOrigin: Item.Center
-                    scale: 1.0 // 默认缩放比例
+            delegate: AudioListItem {
+                id: listItem
+                itemName: model.name
+                downloadUrl: "/" + model.audioPath
+                cancelUrl: "/" + model.audioPath
+                currentPlaying: collectPage.currentPlaying
+                playingComparePath: model.audioPath
+                mouseAcceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                    // 背景容器（当前播放项高亮）
-                    Item {
-                        anchors.fill: parent
-                        // 鼠标区域覆盖整个缩放容器
+                handleClick: function(mouse) {
+                    if (mouse.button === Qt.RightButton) {
+                        contextMenu.audioPath = model.audioPath
+                        contextMenu.audioName = model.name
+                        contextMenu.popupAt(mouse)
+                        return
+                    }
+                    const name = String(model.name)
+                    if (name.indexOf(".") === -1) return
+                    var isMedia = MediaUtils.isMediaFile(model.name)
+                    let isSameFile = (currentPlaying === model.audioPath)
+                    if (!isMedia) {
+                        ASMRPlayer.get_sign_path(model.audioPath)
+                        return
+                    }
+                    currentPlaying = model.audioPath
+                    ASMRPlayer.set_current_playing(model.audioPath)
+                    if (!isSameFile) {
+                        var audioSiteId = ASMRPlayer.getAudioSiteId(collectPage.currentCollectFile, model.audioPath)
+                        var currentSiteId = ASMRPlayer.currentSiteId()
+                        if (audioSiteId && audioSiteId !== currentSiteId) {
+                            ASMRPlayer.switchToSite(audioSiteId)
+                            var siteCfg = configMgr.getSiteConfig()
+                            configMgr.saveSiteConfig(siteCfg.serverUrl || "", audioSiteId)
+                            configMgr.saveSites(ASMRPlayer.getSitesJson())
+                        }
+                        ASMRPlayer.get_sign_path(model.audioPath)
+                        let targetLrc = model.name.split(".").slice(0, -1).join(".") + ".lrc"
+                        if (targetLrc === model.name) return
+                        for (var i = 0; i < audioListModel.count; i++) {
+                            var item = audioListModel.get(i)
+                            if (item.name === targetLrc) {
+                                ASMRPlayer.download_vlc_path(item.audioPath)
+                                return
+                            }
+                        }
+                        ASMRPlayer.show_vlc(false)
+                    }
+                }
+
+                HoverButton {
+                    visible: !model.is_dir
+                    image_path: "qrc:/sources/image/加号.svg"
+                    onClicked: {
+                        contextMenu.audioPath = model.audioPath
+                        contextMenu.audioName = model.name
+                        contextMenu.x = 0; contextMenu.y = 0
+                        contextMenu.open()
+                    }
+                    width: 24; height: 24
+                }
+                HoverButton {
+                    visible: !model.is_dir && !model.audioPath.startsWith("file:///")
+                    image_path: "qrc:/sources/image/下载.svg"
+                    onClicked: ASMRPlayer.download_sign_path("/" + model.audioPath, "/" + model.audioPath)
+                    width: 24; height: 24
+                }
+            }
+        }
+
+        // 操作菜单
+        Popup {
+            id: contextMenu
+            property string audioPath: ""
+            property string audioName: ""
+            width: 160
+            padding: 10
+            background: Rectangle {
+                color: theme.leftBarColor
+                radius: 4
+                border.color: theme.contentColor
+                border.width: 1
+            }
+
+            contentItem: Column {
+                id: menuColumn
+                spacing: 2
+
+                Repeater {
+                    model: ListModel {
+                        ListElement { name: "移动到..."; action: "move" }
+                        ListElement { name: "复制到..."; action: "copy" }
+                        ListElement { name: "取消收藏"; action: "remove" }
+                    }
+                    delegate: Rectangle {
+                        required property string name
+                        required property string action
+                        required property int index
+                        width: menuColumn.width
+                        height: 32
+                        radius: 4
+                        color: menuItemMouse.containsMouse ? Qt.rgba(theme.globalColor.r, theme.globalColor.g, theme.globalColor.b, 0.2) : "transparent"
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: name
+                            color: action === "remove" ? "#FF6B6B" : theme.fontColor
+                            font.pixelSize: 13
+                        }
 
                         MouseArea {
+                            id: menuItemMouse
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                const name = String(model.name);
-                                if(name.indexOf(".") === -1){
-                                    return;
+                                contextMenu.close()
+                                if (action === "move") {
+                                    moveCopyDialog.mode = "move"
+                                    moveCopyDialog.audioPath = contextMenu.audioPath
+                                    moveCopyDialog.audioName = contextMenu.audioName
+                                    moveCopyDialog.currentFolder = ASMRPlayer.get_collect_file()
+                                    moveCopyDialog.open()
+                                } else if (action === "copy") {
+                                    moveCopyDialog.mode = "copy"
+                                    moveCopyDialog.audioPath = contextMenu.audioPath
+                                    moveCopyDialog.audioName = contextMenu.audioName
+                                    moveCopyDialog.currentFolder = ASMRPlayer.get_collect_file()
+                                    moveCopyDialog.open()
+                                } else if (action === "remove") {
+                                    collectPage.dislike_ensure_path = contextMenu.audioPath
+                                    dislicke_ensure.text = "确认取消收藏"
+                                    dislicke_ensure.open()
                                 }
-                                if(currentPlaying !== model.name){
-                                    currentPlaying = model.audioPath
-                                    ASMRPlayer.set_current_playing(model.audioPath);
-                                    ASMRPlayer.get_sign_path(model.audioPath);
-                                    let targetLrc=model.name.split(".").slice(0, -1).join(".")+".lrc"
-                                    if(targetLrc===model.name)return;
-                                    for (var i = 0; i < audioListModel.count; i++) {
-                                        // get(i) 获取第i项的所有属性
-                                        var item = audioListModel.get(i);
-                                        if (item.name === targetLrc) {
-                                            console.log("找到音频对应的lrc文件"+item.name)
-                                            ASMRPlayer.download_vlc_path(item.audioPath)
-                                            return
-                                        }
-                                    }
-                                    ASMRPlayer.show_vlc(false)
-
-                                }
-                            }
-                            // 悬停进入：启动放大动画
-                            onEntered: {
-                                if (scaleRestoreAnim.running) scaleRestoreAnim.stop()
-                                if (!scaleGrowAnim.running) scaleGrowAnim.start()
-                                bgRect.color=theme.fontColor
-                            }
-
-                            // 悬停离开：启动恢复动画
-                            onExited: {
-                                if (scaleGrowAnim.running) scaleGrowAnim.stop()
-                                if (!scaleRestoreAnim.running) scaleRestoreAnim.start()
-                                bgRect.color="#00000000"
-                            }
-
-                            // 放大动画（缩放比例从1→1.02）
-                            PropertyAnimation {
-                                id: scaleGrowAnim
-                                target: scaleContainer
-                                property: "scale"
-                                from: 1.0
-                                to: 1.02 // 放大1.05倍（建议1.0~1.1，避免过度放大）
-                                duration: 200
-                                easing.type: Easing.OutQuad
-                            }
-
-                            // 恢复动画（缩放比例回到1）
-                            PropertyAnimation {
-                                id: scaleRestoreAnim
-                                target: scaleContainer
-                                property: "scale"
-                                from: scaleContainer.scale
-                                to: 1.0
-                                duration: 200
-                                easing.type: Easing.OutQuad
-                            }
-                            Rectangle{
-                                anchors.fill: parent
-                                color: "#00000000"
-                                opacity:0.2
-                                radius: 4
-                                id: bgRect
-                            }
-                            Rectangle{
-                                id:dowloadShow
-                                property real dowloadprogress: listItem.downloadProgress
-                                color: theme.dowloadColor
-                                opacity:0.8
-                                radius: 4
-                                anchors.left:parent.left
-                                anchors.top:parent.top
-                                anchors.bottom: parent.bottom
-                                width: dowloadprogress * parent.width
-                                visible: (model.is_dir || dowloadprogress <= 0.0||dowloadprogress==1) ? 0 : 1
-                                Behavior on width {
-                                    NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
-                                }
-                            }
-                            RowLayout {
-                                anchors.fill: parent
-                                spacing: 15
-                                //添加到收藏列表
-                                HoverButton {
-                                    visible:!model.is_dir
-                                    m_rotation:180
-                                    image_path: "qrc:/sources/image/我喜欢的.svg"
-                                    onClicked: {
-                                        collectPage.dislicke_ensure_path=model.audioPath
-                                        dislicke_ensure.text="确认取消收藏"
-                                        dislicke_ensure.open()
-                                    }
-                                    Layout.preferredWidth: 24
-                                    Layout.preferredHeight: 24
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                HoverButton {
-                                    visible:!model.is_dir&&!model.audioPath.startsWith("file:///")
-                                    image_path: "qrc:/sources/image/下载.svg"
-                                    onClicked: {
-                                        ASMRPlayer.download_sign_path("/" + model.audioPath);
-                                    }
-                                    Layout.preferredWidth: 24
-                                    Layout.preferredHeight: 24
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                Text {
-                                    id:audiopath
-                                    text: model.name
-                                    font.pixelSize: 16
-                                    color: currentPlaying === model.model.audioPath ? theme.green : theme.fontColor
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                    Layout.leftMargin: 0
-                                }
-                            }
-                            HoverButton {
-                                anchors.right: parent.right
-                                anchors.rightMargin: 20
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible:(listItem.downloadProgress!=0)&&(listItem.downloadProgress!=1)
-                                image_path: "qrc:/sources/image/取消下载.svg"
-                                onClicked: {
-                                    dowloadmgr.candelDownload("/" + model.audioPath);
-                                }
-                                Layout.preferredWidth: 24
-                                Layout.preferredHeight: 24
-                                Layout.alignment: Qt.AlignVCenter
                             }
                         }
                     }
-                    Connections {
-                        target: dowloadmgr
-                        function onDownloadProgressUpdated(url, progress) {
-                            const currentUrl = "/" + model.audioPath;
-                            if (url === currentUrl) {
-                                listItem.downloadProgress = progress;
+                }
+            }
+
+            function popupAt(mouse) {
+                // 获取全局鼠标位置
+                let globalMousePos = mousePosition.cursorPos()
+                // 将全局坐标转换为相对于父组件的坐标
+                let localPos = parent.mapFromGlobal(globalMousePos.x, globalMousePos.y)
+                // 计算位置
+                let posX = localPos.x + 10
+                let posY = localPos.y - height / 2
+                // 边界检测
+                if (posX + width > parent.width) posX = localPos.x - width - 10
+                if (posY < 0) posY = 0
+                if (posY + height > parent.height) posY = parent.height - height
+                x = posX
+                y = posY
+                open()
+            }
+        }
+
+        // 移动/复制对话框
+        Popup {
+            id: moveCopyDialog
+            property string mode: ""  // "move" or "copy"
+            property string audioPath: ""
+            property string audioName: ""
+            property string currentFolder: ""
+            width: 300
+            height: 350
+            parent: Overlay.overlay
+            x: (parent.width - width) / 2
+            y: (parent.height - height) / 2
+            modal: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+            onOpened: {
+                // 实时加载收藏夹列表
+                loadFolderList()
+            }
+
+            function loadFolderList() {
+                var folders = ASMRPlayer.get_all_collections()
+                folderListModel.clear()
+                for (var i = 0; i < folders.length; i++) {
+                    folderListModel.append({"folderName": folders[i]})
+                }
+            }
+
+            background: Rectangle {
+                color: theme.leftBarColor
+                radius: 8
+                border.color: theme.contentColor
+                border.width: 1
+            }
+
+            contentItem: Item {
+                anchors.fill: parent
+
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    spacing: 12
+
+                    Text {
+                        text: moveCopyDialog.mode === "move" ? "移动到收藏夹" : "复制到收藏夹"
+                        color: theme.fontColor
+                        font.pointSize: 14
+                        font.bold: true
+                    }
+
+                    Text {
+                        text: "音频: " + moveCopyDialog.audioName
+                        color: Qt.rgba(theme.fontColor.r, theme.fontColor.g, theme.fontColor.b, 0.7)
+                        font.pointSize: 11
+                        width: parent.width
+                        elide: Text.ElideMiddle
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: theme.contentColor
+                    }
+
+                    ListView {
+                        width: parent.width
+                        height: parent.height - 70
+                        clip: true
+                        spacing: 4
+                        model: ListModel { id: folderListModel }
+
+                        delegate: Rectangle {
+                            required property string folderName
+                            required property int index
+                            width: parent.width
+                            height: 36
+                            radius: 4
+                            color: folderMouse.containsMouse ? Qt.rgba(theme.globalColor.r, theme.globalColor.g, theme.globalColor.b, 0.2) : "transparent"
+
+                            Text {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: folderName
+                                color: folderName === moveCopyDialog.currentFolder ? theme.green : theme.fontColor
+                                font.pixelSize: 13
+                            }
+
+                            Text {
+                                visible: folderName === moveCopyDialog.currentFolder
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "(当前)"
+                                color: theme.green
+                                font.pixelSize: 11
+                            }
+
+                            MouseArea {
+                                id: folderMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (folderName === moveCopyDialog.currentFolder) return
+
+                                    if (moveCopyDialog.mode === "move") {
+                                        ASMRPlayer.moveAudio(moveCopyDialog.currentFolder, folderName, moveCopyDialog.audioPath)
+                                    } else {
+                                        ASMRPlayer.copyAudio(moveCopyDialog.currentFolder, folderName, moveCopyDialog.audioPath)
+                                    }
+                                    moveCopyDialog.close()
+                                    // 刷新列表
+                                    ASMRPlayer.load_audio(ASMRPlayer.get_collect_file())
+                                }
                             }
                         }
                     }
                 }
             }
         }
+
         Item {
             id: loadingOverlay
             anchors.fill: parent

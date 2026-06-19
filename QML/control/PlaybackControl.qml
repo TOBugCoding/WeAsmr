@@ -7,7 +7,9 @@ import QtQuick.Layouts
 import QuickVLC
 import QtQuick.Dialogs
 import QtQuick.Controls.Basic
+import QtQuick.Effects
 import "../"
+import "../components/MediaUtils.js" as MediaUtils
 import com.asmr.player 1.0
 Item {
     id: playbackController
@@ -20,7 +22,7 @@ Item {
     property alias loop: loopButton.loops
     property alias slider_bg:playbackSeekControl.color_slider
     // 监听主界面高度 如果处于全屏就同步
-    property var mainheight: mainWindow.contentItem.height
+    property int mainheight: mainWindow.contentItem.height
     onMainheightChanged: {
         if (topbar.fullscreen) {
             playbackController.bottomplayerHeight = mainWindow.contentItem.height
@@ -52,23 +54,28 @@ Item {
         title: "选择要加载的音频资源"
         currentFolder: "file:///" + appDir + "/download"
 
-        Component.onCompleted: {
-            console.log(appDir)
-        }
-
         onAccepted: {
+            var fileUrl = fileDialog.selectedFile.toString()
+            var fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1)
+
+            // 判断是否是音视频文件（非音视频文件走预览）
+            var isMedia = MediaUtils.isMediaFile(fileName)
+
+            // 非音视频文件：使用系统默认程序打开
+            if (!isMedia) {
+                Qt.openUrlExternally(fileDialog.selectedFile)
+                return
+            }
+
+            // 音视频文件：播放
             let suc=playbackController.mediaPlayer.setSafeUrl(fileDialog.selectedFile,true)
             if(!suc){
                 return;
             }
-            audioOutput.volume = playbackController.volume
-
-            var fileUrl = fileDialog.selectedFile.toString()
-            var fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1)
             systemIcon.tooltip = fileName
-            audioOutput.volume=Qt.binding(function() { return playbackController.volume })
-            if (fileDialog.selectedFile.toString().includes(".m3u8") ||
-                fileDialog.selectedFile.toString().includes(".ts")) {
+            audioOutput.volume = Qt.binding(function() { return playbackController.volume })
+            var isVideo = MediaUtils.isVideoFile(fileUrl)
+            if (isVideo) {
                 output.visible = true
                 playbackController.slider_bg=0
                 console.log("视频播放")
@@ -89,6 +96,12 @@ Item {
         }
     }
 
+    // 收藏夹选择弹窗
+    SelectCollect {
+        id: selectCollect
+        parent: Overlay.overlay
+    }
+
     // 紧凑化自定义按钮（缩小尺寸，节省空间）
     component CustomButton: Button {
         implicitWidth: 36
@@ -98,13 +111,7 @@ Item {
         flat: true
 
         background: Rectangle {
-            color: "transparent" // 透明背景，屏蔽原生选中态白底
-
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-            }
+            color: "transparent"
         }
     }
 
@@ -117,13 +124,7 @@ Item {
         flat: true
 
         background: Rectangle {
-            color: "transparent" // 透明背景，屏蔽原生选中态白底
-
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-            }
+            color: "transparent"
         }
     }
 
@@ -169,6 +170,71 @@ Item {
                         id: openUrlButton
                         image_path: "qrc:/sources/image/连接.svg"
                         onClicked: urlPopup.open()
+                    }
+
+                    // 喜欢按钮
+                    Item {
+                        id: likeButton
+                        width: 36
+                        height: 36
+                        property bool isLiked: false
+                        property string currentAudio: ""
+
+                        Component.onCompleted: {
+                            currentAudio = ASMRPlayer.get_current_playing()
+                            updateLikedState()
+                        }
+
+                        function updateLikedState() {
+                            if (currentAudio && currentAudio !== "") {
+                                isLiked = ASMRPlayer.isLiked(currentAudio)
+                            } else {
+                                isLiked = false
+                            }
+                        }
+
+                        // 监听喜欢状态变化信号
+                        Connections {
+                            target: ASMRPlayer
+                            function onLikedChanged() {
+                                likeButton.updateLikedState()
+                            }
+                            function onCurrent_playing_changed() {
+                                likeButton.currentAudio = ASMRPlayer.get_current_playing()
+                                likeButton.updateLikedState()
+                            }
+                        }
+
+                        Image {
+                            id: likeIcon
+                            anchors.centerIn: parent
+                            width: 24
+                            height: 24
+                            source: "qrc:/sources/image/我喜欢的.svg"
+                            visible: false
+                            mipmap: true
+                            smooth: true
+                        }
+                        MultiEffect {
+                            source: likeIcon
+                            anchors.fill: likeIcon
+                            brightness: likeButton.isLiked ? 1 : (likeMouseArea.containsMouse ? 1 : theme.globalBrightness)
+                            colorization: likeButton.isLiked ? 1 : (likeMouseArea.containsMouse ? 0.5 : 0)
+                            colorizationColor: likeButton.isLiked ? "#FF4444" : theme.globalColor
+                        }
+
+                        MouseArea {
+                            id: likeMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                var currentPlaying = ASMRPlayer.get_current_playing()
+                                if (currentPlaying && currentPlaying !== "") {
+                                    ASMRPlayer.toggleLike(currentPlaying)
+                                }
+                            }
+                        }
                     }
                     Column{
                         Layout.alignment: Qt.AlignVCenter

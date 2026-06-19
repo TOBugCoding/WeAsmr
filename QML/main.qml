@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QuickVLC
 import Qt.labs.platform
+import com.asmr.player 1.0
 
 import "components" as Components
 ApplicationWindow {
@@ -158,6 +159,35 @@ ApplicationWindow {
         mainWindow.show()
         mainWindow.raise()
         mainWindow.requestActivate()
+        // 先加载持久化的站点列表
+        var savedSites = configMgr.getSites()
+        if(savedSites.length > 0){
+            ASMRPlayer.loadSitesFromJson(savedSites)
+        }
+        // 从配置初始化站点（服务器地址 + 上次选择 + 服务器同步）
+        var siteCfg = configMgr.getSiteConfig()
+        ASMRPlayer.initFromConfig(siteCfg.serverUrl || "", siteCfg.lastSelected || "selfWeb")
+        // 如果没有任何站点，延迟弹出设置界面（等待服务器同步结果）
+        if(ASMRPlayer.siteCount() === 0){
+            noSiteTimer.start()
+        }
+    }
+    // 无站点时的兜底定时器：3秒后如果仍无站点则弹出设置
+    Timer{
+        id: noSiteTimer
+        interval: 3000
+        repeat: false
+        onTriggered: {
+            if(ASMRPlayer.siteCount() === 0){
+                topbar.openSettings()
+            }
+        }
+    }
+    Connections{
+        target: ASMRPlayer
+        function onSitesReceived(){
+            noSiteTimer.stop()
+        }
     }
     function raiseAndShowWindow(){
         mainWindow.show()

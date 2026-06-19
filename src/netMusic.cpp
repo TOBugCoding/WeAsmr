@@ -1,5 +1,8 @@
 ﻿#include "netMusic.h"
 #include "webAddr.h"
+#include <QSet>
+#include <QFile>
+
 NetMusic::NetMusic(QObject* parent)
     : QObject(parent)
     , m_netManager(new QNetworkAccessManager(this))
@@ -7,7 +10,11 @@ NetMusic::NetMusic(QObject* parent)
     , m_preReply(nullptr)
     ,history(nullptr)
 {
-    webAddr::GetInstance().initWebAddr(webAddr::gay);
+    // 初始化默认网站列表（离线 fallback）
+    QList<SiteItem> defaults;
+    webAddr::GetInstance().loadSites(defaults);
+    webAddr::GetInstance().switchTo("selfWeb");
+
     history = new QList<FilePath>();
     history->append(FilePath("",1,1));
     connect(m_netManager, &QNetworkAccessManager::finished, this, &NetMusic::onReplyFinished);
@@ -262,6 +269,9 @@ void NetMusic::collect_audio(QString path, QString audioName) {
         }
     }
 
+    // 获取当前站点ID
+    QString currentSiteId = webAddr::GetInstance().currentId();
+
     // 查找目标收藏夹（默认收藏夹）
     QJsonObject targetFolder;
     int targetIndex = -1;
@@ -289,20 +299,27 @@ void NetMusic::collect_audio(QString path, QString audioName) {
         // 检查音频是否已存在（避免重复添加）
         bool isExisted = false;
         for (const QJsonValue& audioVal : std::as_const(audioList)) {
-            if (audioVal.toString() == audioName) {
+            QJsonObject audioObj = audioVal.toObject();
+            if (audioObj["audioPath"].toString() == audioName && audioObj["siteId"].toString() == currentSiteId) {
                 isExisted = true;
                 qDebug() << "音频已存在于收藏夹：" << audioName;
                 return;
             }
         }
 
-        // 添加新音频路径
-        audioList.append(audioName);
+        // 添加新音频路径（包含站点信息）
+        QJsonObject audioObj;
+        audioObj["audioPath"] = audioName;
+        audioObj["siteId"] = currentSiteId;
+        audioList.append(audioObj);
         audioCount = audioList.size(); // 更新数量（确保与列表长度一致）
     }
     else {
         // 不存在该收藏夹，创建新条目
-        audioList.append(audioName);
+        QJsonObject audioObj;
+        audioObj["audioPath"] = audioName;
+        audioObj["siteId"] = currentSiteId;
+        audioList.append(audioObj);
         audioCount = 1; // 初始数量为1
 
         targetFolder["path"] = path;
@@ -392,14 +409,31 @@ void NetMusic::dislike_collect_audio(QString path, QString audioName) {
     // 5. 读取收藏夹中的音频列表并移除目标音频
     QJsonArray audioList = targetFolder["audio_list"].toArray();
     QJsonArray newAudioList; // 存储移除后的音频列表
+    QString currentSiteId = webAddr::GetInstance().currentId();
+
+    // "喜欢"收藏夹按路径匹配（不区分站点），其他收藏夹按路径+站点匹配
+    bool matchByPathOnly = (path == "喜欢");
 
     for (const QJsonValue& audioVal : std::as_const(audioList)) {
-        // 跳过要取消收藏的音频，其余保留
-        if (audioVal.toString() != audioName) {
-            newAudioList.append(audioVal);
+        // 兼容新旧格式
+        if (audioVal.isObject()) {
+            QJsonObject audioObj = audioVal.toObject();
+            bool pathMatch = audioObj["audioPath"].toString() == audioName;
+            bool siteMatch = audioObj["siteId"].toString() == currentSiteId;
+            if (pathMatch && (matchByPathOnly || siteMatch)) {
+                isModified = true;
+                qDebug() << "找到并移除音频：" << audioName;
+            } else {
+                newAudioList.append(audioVal);
+            }
         } else {
-            isModified = true; // 标记数据已修改
-            qDebug() << "找到并移除音频：" << audioName;
+            // 旧格式：只检查音频路径
+            if (audioVal.toString() != audioName) {
+                newAudioList.append(audioVal);
+            } else {
+                isModified = true;
+                qDebug() << "找到并移除音频：" << audioName;
+            }
         }
     }
 
@@ -488,7 +522,15 @@ void NetMusic::load_audio(QString path,bool asencd)
             // 5. 提取音频列表
             QJsonArray audioJsonArray = itemObj["audio_list"].toArray();
             for (const QJsonValue& audioVal : std::as_const(audioJsonArray)) {
-                audioList.append(audioVal.toString());
+                // 兼容新旧格式
+                if (audioVal.isObject()) {
+                    // 新格式：包含站点信息
+                    QJsonObject audioObj = audioVal.toObject();
+                    audioList.append(audioObj["audioPath"].toString());
+                } else {
+                    // 旧格式：只有路径
+                    audioList.append(audioVal.toString());
+                }
             }
             qDebug() << "成功加载收藏夹[" << path << "]的音频，数量：" << audioList.size();
             break; // 找到目标收藏夹后退出循环
@@ -757,6 +799,144 @@ bool NetMusic::delete_collection(QString folderName)
     return true;
 }
 
+bool NetMusic::isLiked(const QString& audioPath) {
+    QFile jsonFile(COLLECTION_JSON_PATH);
+    if (!jsonFile.exists()) return false;
+
+    if (!jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) return false;
+    QByteArray jsonData = jsonFile.readAll();
+    jsonFile.close();
+
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isArray()) return false;
+
+    QJsonArray collectionArray = jsonDoc.array();
+    for (const QJsonValue& itemValue : std::as_const(collectionArray)) {
+        if (itemValue.isObject()) {
+            QJsonObject itemObj = itemValue.toObject();
+            if (itemObj["path"].toString() == "喜欢") {
+                QJsonArray audioList = itemObj["audio_list"].toArray();
+                for (const QJsonValue& audioVal : std::as_const(audioList)) {
+                    // 兼容新旧格式 —— 喜欢列表按路径匹配，不区分站点
+                    if (audioVal.isObject()) {
+                        QJsonObject audioObj = audioVal.toObject();
+                        if (audioObj["audioPath"].toString() == audioPath) {
+                            return true;
+                        }
+                    } else {
+                        if (audioVal.toString() == audioPath) return true;
+                    }
+                }
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
+bool NetMusic::toggleLike(const QString& audioPath) {
+    if (isLiked(audioPath)) {
+        // 取消喜欢
+        dislike_collect_audio("喜欢", audioPath);
+        emit likedChanged();
+        return false;
+    } else {
+        // 添加喜欢
+        collect_audio("喜欢", audioPath);
+        emit likedChanged();
+        return true;
+    }
+}
+
+QString NetMusic::getAudioSiteId(const QString& folderName, const QString& audioPath) {
+    QFile jsonFile(COLLECTION_JSON_PATH);
+    if (!jsonFile.exists()) return "";
+
+    if (!jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) return "";
+    QByteArray jsonData = jsonFile.readAll();
+    jsonFile.close();
+
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isArray()) return "";
+
+    QJsonArray collectionArray = jsonDoc.array();
+    for (const QJsonValue& itemValue : std::as_const(collectionArray)) {
+        if (itemValue.isObject()) {
+            QJsonObject itemObj = itemValue.toObject();
+            if (itemObj["path"].toString() == folderName) {
+                QJsonArray audioList = itemObj["audio_list"].toArray();
+                for (const QJsonValue& audioVal : std::as_const(audioList)) {
+                    if (audioVal.isObject()) {
+                        QJsonObject audioObj = audioVal.toObject();
+                        if (audioObj["audioPath"].toString() == audioPath) {
+                            return audioObj["siteId"].toString();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return "";
+}
+
+bool NetMusic::moveAudio(const QString& fromFolder, const QString& toFolder, const QString& audioPath) {
+    // 先复制到目标收藏夹
+    if (!copyAudio(fromFolder, toFolder, audioPath)) return false;
+    // 再从原收藏夹移除
+    dislike_collect_audio(fromFolder, audioPath);
+    return true;
+}
+
+bool NetMusic::copyAudio(const QString& fromFolder, const QString& toFolder, const QString& audioPath) {
+    // 获取音频的原始站点信息
+    QString siteId = getAudioSiteId(fromFolder, audioPath);
+    if (siteId.isEmpty()) {
+        siteId = webAddr::GetInstance().currentId();
+    }
+
+    // 检查目标收藏夹是否存在，不存在则创建
+    QFile jsonFile(COLLECTION_JSON_PATH);
+    if (!jsonFile.exists()) return false;
+
+    if (!jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) return false;
+    QByteArray jsonData = jsonFile.readAll();
+    jsonFile.close();
+
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !jsonDoc.isArray()) return false;
+
+    QJsonArray collectionArray = jsonDoc.array();
+
+    // 检查音频是否已在目标收藏夹中（考虑站点信息）
+    for (const QJsonValue& itemValue : std::as_const(collectionArray)) {
+        if (itemValue.isObject()) {
+            QJsonObject itemObj = itemValue.toObject();
+            if (itemObj["path"].toString() == toFolder) {
+                QJsonArray audioList = itemObj["audio_list"].toArray();
+                for (const QJsonValue& audioVal : std::as_const(audioList)) {
+                    if (audioVal.isObject()) {
+                        QJsonObject audioObj = audioVal.toObject();
+                        if (audioObj["audioPath"].toString() == audioPath && audioObj["siteId"].toString() == siteId) {
+                            qDebug() << "音频已存在于目标收藏夹";
+                            return false;
+                        }
+                    } else if (audioVal.toString() == audioPath) {
+                        qDebug() << "音频已存在于目标收藏夹";
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    // 添加到目标收藏夹（使用 collect_audio，它会自动记录当前站点）
+    collect_audio(toFolder, audioPath);
+    return true;
+}
+
 //void NetMusic::net_test(const QString keyword) {
 //    QUrl url("");
 //    QNetworkRequest request(url);
@@ -879,7 +1059,7 @@ void NetMusic::get_sign_path(const QString path){
             sign_record=parts[1];
             qDebug()<<"路径："<<sign_path;
             QString decodedPath = QUrl::toPercentEncoding(path.toUtf8());
-            if(webAddr::GetInstance().getTargetAddr()==webAddr::moon&&decodedPath.contains("%20")&&path.contains("m3u8")){
+            if(webAddr::GetInstance().isCurrentId("moon")&&decodedPath.contains("%20")&&path.contains("m3u8")){
                 emit emptyM3u8(sign_path);
                 qDebug()<<"检测到含空格的m3u8";
                 reply->deleteLater();
@@ -894,7 +1074,7 @@ void NetMusic::get_sign_path(const QString path){
     });
 }
 
-void NetMusic::download_sign_path(const QString path){
+void NetMusic::download_sign_path(const QString path, const QString progressKey){
 
     QUrl url(webAddr::GetInstance().getMainweb()+"/api/fs/get");//https://asmrmoon.com
     QNetworkRequest request(url);
@@ -909,21 +1089,21 @@ void NetMusic::download_sign_path(const QString path){
     QByteArray postData = jsonDoc.toJson(QJsonDocument::Compact);
     QNetworkReply* reply = m_netManager->post(request, postData);
 
-    connect(reply, &QNetworkReply::finished, this, [reply,this]() {
+    connect(reply, &QNetworkReply::finished, this, [reply,this,progressKey]() {
         QByteArray responseData = reply->readAll();
         QJsonParseError parseError;
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &parseError);
         if (jsonDoc.isObject()) {
             QJsonObject rootObj = jsonDoc.object();
             if(!rootObj.contains("data")){
-                emit downloadPathReceived("");
+                emit downloadPathReceived("", progressKey);
                 qDebug()<<"json规则不合法";
                 reply->deleteLater();
                 return;
             }
             QJsonObject dataObj = rootObj["data"].toObject();
             if(!dataObj.contains("raw_url")){
-                emit downloadPathReceived("");
+                emit downloadPathReceived("", progressKey);
                 qDebug()<<"json规则不合法";
                 reply->deleteLater();
                 return;
@@ -931,7 +1111,7 @@ void NetMusic::download_sign_path(const QString path){
             QString sign_path=dataObj["raw_url"].toString();
             QStringList parts = sign_path.split("sign=");
             sign_record=parts[1];
-            emit downloadPathReceived(sign_path);
+            emit downloadPathReceived(sign_path, progressKey);
         }
         reply->deleteLater();
     });
@@ -1005,14 +1185,14 @@ void NetMusic::download_vlc_path(const QString path){
         if (jsonDoc.isObject()) {
             QJsonObject rootObj = jsonDoc.object();
             if(!rootObj.contains("data")){
-                emit downloadPathReceived("");
+                emit downloadPathReceived("", "");
                 qDebug()<<"json规则不合法";
                 reply->deleteLater();
                 return;
             }
             QJsonObject dataObj = rootObj["data"].toObject();
             if(!dataObj.contains("raw_url")){
-                emit downloadPathReceived("");
+                emit downloadPathReceived("", "");
                 qDebug()<<"json规则不合法";
                 reply->deleteLater();
                 return;
@@ -1188,4 +1368,248 @@ void NetMusic::getLrc(const QString localpath){
     qDebug()<<"发送lrc"<<lrcList.length();
     file.close();
     emit sigLrcContent(lrcList);
+}
+
+void NetMusic::set_webAddr(const QString addr){
+    // addr 现在是网站 id（如 "moon", "gay"）
+    if(addr == webAddr::GetInstance().currentId()){
+        return; // 已经是当前站点，无需切换
+    }
+    if(!webAddr::GetInstance().switchTo(addr)){
+        emit errorDetail("未知站点: " + addr);
+        return;
+    }
+    // 切换成功，重置浏览状态
+    current_page=1;
+    total_page=1;
+    history->clear();
+    history->append(FilePath("",1,1));
+    currentFilePathIndex=0;
+    emit sigFilePath(history->at(currentFilePathIndex));
+    current_url="";
+    collect_audio_list.clear();
+    nameList.clear();
+    emit currentSiteChanged();
+    emit asmrNamesReceived(QList<AsmrItem>{});
+    asmr_list("",false);
+}
+
+bool NetMusic::switchToSite(const QString& siteId) {
+    if(siteId == webAddr::GetInstance().currentId()){
+        return true; // 已经是当前站点
+    }
+    if(!webAddr::GetInstance().switchTo(siteId)){
+        return false;
+    }
+    // 切换成功，重置浏览状态
+    current_page=1;
+    total_page=1;
+    history->clear();
+    history->append(FilePath("",1,1));
+    currentFilePathIndex=0;
+    emit sigFilePath(history->at(currentFilePathIndex));
+    current_url="";
+    collect_audio_list.clear();
+    nameList.clear();
+    emit currentSiteChanged();
+    emit asmrNamesReceived(QList<AsmrItem>{});
+    return true;
+}
+
+void NetMusic::syncSites(){
+    if(m_siteServerUrl.isEmpty()){
+        emit sitesSyncFailed("未设置服务器地址");
+        return;
+    }
+    QUrl url(m_siteServerUrl + "/api/sites");
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::UserAgentHeader,
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+    QNetworkReply* reply = m_netManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        if(reply->error() != QNetworkReply::NoError){
+            emit sitesSyncFailed(reply->errorString());
+            reply->deleteLater();
+            return;
+        }
+        QByteArray data = reply->readAll();
+        QJsonParseError err;
+        QJsonDocument doc = QJsonDocument::fromJson(data, &err);
+        if(err.error != QJsonParseError::NoError || !doc.isObject()){
+            emit sitesSyncFailed("JSON 解析失败");
+            reply->deleteLater();
+            return;
+        }
+        QJsonObject root = doc.object();
+        if(root["code"].toInt(-1) != 0){
+            emit sitesSyncFailed(root["message"].toString());
+            reply->deleteLater();
+            return;
+        }
+        QJsonArray arr = root["data"].toArray();
+        QList<SiteItem> serverSites;
+        for(const QJsonValue& val : arr){
+            if(!val.isObject()) continue;
+            QJsonObject obj = val.toObject();
+            SiteItem item;
+            item.id = obj["id"].toString();
+            item.name = obj["name"].toString();
+            item.mainUrl = obj["mainUrl"].toString();
+            item.apiType = obj["apiType"].toString("alist");
+            item.enabled = obj["enabled"].toBool(true);
+            item.sortOrder = obj["sortOrder"].toInt(0);
+            if(item.enabled && !item.id.isEmpty()){
+                serverSites.append(item);
+            }
+        }
+        if(!serverSites.isEmpty()){
+            // 合并：以本地站点为基础，服务器站点覆盖同 id，本地独有的保留
+            QList<SiteItem> localSites = webAddr::GetInstance().allSites();
+            QSet<QString> serverIds;
+            for(const SiteItem& s : serverSites){
+                serverIds.insert(s.id);
+            }
+            QList<SiteItem> merged;
+            // 先加服务器站点（保持服务器顺序）
+            merged.append(serverSites);
+            // 再加本地独有的站点
+            for(const SiteItem& s : localSites){
+                if(!serverIds.contains(s.id)){
+                    merged.append(s);
+                }
+            }
+            webAddr::GetInstance().loadSites(merged);
+            emit sitesReceived();
+            qDebug() << "[SyncSites] 同步成功，共" << merged.size() << "个站点（服务器" << serverSites.size() << "，本地独有" << (merged.size()-serverSites.size()) << "）";
+        } else {
+            emit sitesSyncFailed("服务器返回空列表");
+        }
+        reply->deleteLater();
+    });
+}
+
+void NetMusic::setSiteServer(const QString& url){
+    m_siteServerUrl = url;
+}
+
+QStringList NetMusic::siteNames() const {
+    return webAddr::GetInstance().siteNames();
+}
+
+QString NetMusic::currentSiteId() const {
+    return webAddr::GetInstance().currentId();
+}
+
+QString NetMusic::currentSiteName() const {
+    return webAddr::GetInstance().currentName();
+}
+
+void NetMusic::setSiteByIndex(int index){
+    QList<SiteItem> sites = webAddr::GetInstance().enabledSites();
+    if(index >= 0 && index < sites.size()){
+        set_webAddr(sites[index].id);
+    }
+}
+
+int NetMusic::currentSiteIndex() const {
+    QString id = currentSiteId();
+    QList<SiteItem> sites = webAddr::GetInstance().enabledSites();
+    for(int i = 0; i < sites.size(); ++i){
+        if(sites[i].id == id) return i;
+    }
+    return -1;
+}
+
+int NetMusic::siteCount() const {
+    return webAddr::GetInstance().siteCount();
+}
+
+QString NetMusic::siteIdByIndex(int index) const {
+    QList<SiteItem> sites = webAddr::GetInstance().enabledSites();
+    if(index >= 0 && index < sites.size()){
+        return sites[index].id;
+    }
+    return {};
+}
+
+void NetMusic::loadSitesFromJson(const QJsonArray& sites){
+    QList<SiteItem> list;
+    for(const QJsonValue& val : sites){
+        if(!val.isObject()) continue;
+        SiteItem item = SiteItem::fromJson(val.toObject());
+        if(!item.id.isEmpty()){
+            list.append(item);
+        }
+    }
+    if(!list.isEmpty()){
+        webAddr::GetInstance().loadSites(list);
+    }
+}
+
+bool NetMusic::addSite(const QString& id, const QString& name, const QString& mainUrl){
+    if(id.isEmpty() || mainUrl.isEmpty()) return false;
+    SiteItem item;
+    item.id = id;
+    item.name = name;
+    item.mainUrl = mainUrl;
+    item.apiType = "alist";
+    item.enabled = true;
+    item.sortOrder = webAddr::GetInstance().siteCount();
+    webAddr::GetInstance().addSite(item);
+    emit sitesReceived();
+    return true;
+}
+
+bool NetMusic::removeSite(const QString& id){
+    bool ok = webAddr::GetInstance().removeSite(id);
+    if(ok){
+        emit sitesReceived();
+    }
+    return ok;
+}
+
+QJsonArray NetMusic::getSitesJson() const{
+    QJsonArray arr;
+    for(const SiteItem& item : webAddr::GetInstance().allSites()){
+        arr.append(item.toJson());
+    }
+    return arr;
+}
+
+QString NetMusic::readFileContent(const QString& filePath, const QString& encoding){
+    // 将 file:/// URL 转为本地路径
+    QString localPath = filePath;
+    if(localPath.startsWith("file:///")){
+        localPath = QUrl(filePath).toLocalFile();
+    }
+
+    QFile file(localPath);
+    if(!file.open(QIODevice::ReadOnly)){
+        return "无法打开文件: " + localPath;
+    }
+
+    QByteArray rawData = file.readAll();
+    file.close();
+
+    if(encoding == "GB2312" || encoding == "GBK"){
+        // fromLocal8Bit 使用系统本地编码（中文Windows为GBK/GB2312）
+        return QString::fromLocal8Bit(rawData);
+    }
+
+    // 默认 UTF-8
+    return QString::fromUtf8(rawData);
+}
+
+void NetMusic::initFromConfig(const QString& serverUrl, const QString& lastSelected){
+    // 设置服务器地址
+    if(!serverUrl.isEmpty()){
+        setSiteServer(serverUrl);
+        syncSites();
+    }
+    // 切换到上次选择的站点
+    if(!lastSelected.isEmpty()){
+        webAddr::GetInstance().switchTo(lastSelected);
+        emit currentSiteChanged();
+    }
 }

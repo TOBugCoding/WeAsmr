@@ -47,6 +47,8 @@ int main(int argc, char* argv[])
     DownloadToolMgr dowloadmgr;
     //注册单例，全局调用，避免深度过深导致访问不到
     NetMusic asmr_player;
+    // 确保"喜欢"收藏夹存在
+    asmr_player.add_collection("喜欢");
     qmlRegisterSingletonInstance<NetMusic>("com.asmr.player",1, 0, "ASMRPlayer",&asmr_player);
 
     QQmlApplicationEngine engine;

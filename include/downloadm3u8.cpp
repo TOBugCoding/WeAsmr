@@ -6,13 +6,13 @@
 #include <QStandardPaths>
 #include <QUuid>
 #include <QFileInfo>
-
+#include <webAddr.h>
 Downloadm3u8::Downloadm3u8(QString _pre_path,QObject *parent)
     : QObject(parent)
     , m_nam(new QNetworkAccessManager(this))
     , m_currentDownloaded(0)
     , m_currentProcessing(0)
-    , m_maxConcurrent(8)  // 默认最大并发8个
+    , m_maxConcurrent(4)
     , m_isStopped(false)
     , m_isMerging(false)
     , pre_path(_pre_path)
@@ -179,12 +179,18 @@ void Downloadm3u8::startNextDownloads()
     if (availableSlots <= 0) {
         return;
     }
-
+    bool add_prepath=false;
+    if(webAddr::GetInstance().isCurrentId("panmidy")){
+        add_prepath=true;
+    }
     // 找到下一个未下载的分片索引
     int nextIndex = m_currentDownloaded + m_runningReplies.size();
     while (availableSlots > 0 && nextIndex < m_tsUrlList.size()) {
         // 启动下载
-        QString tsUrl = pre_path+"/"+m_tsUrlList.at(nextIndex);//url添加
+        QString tsUrl = m_tsUrlList.at(nextIndex);//url添加
+        if(add_prepath){
+            tsUrl=pre_path+"/"+tsUrl;
+        }
         qDebug()<<tsUrl;
         QNetworkReply *reply = m_nam->get(QNetworkRequest(tsUrl));
         m_runningReplies.insert(nextIndex, reply);
@@ -269,14 +275,23 @@ void Downloadm3u8::partCacheFiles(){
 void Downloadm3u8::parseM3U8(const QString &m3u8Content)
 {
     m_tsUrlList.clear();
-
-    QStringList lines = m3u8Content.split(QRegularExpression(R"(\r?\n)"), Qt::SkipEmptyParts);
+    static QRegularExpression re(R"(\r?\n)");
+    QStringList lines = m3u8Content.split(re, Qt::SkipEmptyParts);
     QRegularExpression tsRegex(R"(^dir_.+\.jpg$)", QRegularExpression::CaseInsensitiveOption);
-
+    bool add_prepath=false;
+    if(webAddr::GetInstance().isCurrentId("panmidy")){
+        add_prepath=true;
+    }
     foreach (QString line, lines) {
         line = line.trimmed();
-        if (!line.startsWith("#") && tsRegex.match(line).hasMatch()) {
-            m_tsUrlList.append(line);
+        if(add_prepath==true){
+            if (!line.startsWith("#") && tsRegex.match(line).hasMatch()) {
+                m_tsUrlList.append(line);
+            }
+        }else{
+            if (!line.startsWith("#")) {
+                m_tsUrlList.append(line);
+            }
         }
     }
 }

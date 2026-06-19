@@ -15,7 +15,8 @@ Item{
 	property var leftBarData:[
 		{headerText:"在线音频",btnData:[
             {btnText:"ASMR",btnIcon:"qrc:/sources/image/我喜欢的.svg",qml:"qrc:/QML/content/Asmr_list.qml",isActive:true},
-			{btnText:"关于我",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/Aboutme.qml",isActive:true},
+            {btnText:"关于我",btnIcon:"qrc:/sources/image/视频.svg",qml:"qrc:/QML/content/Aboutme.qml",isActive:false},
+			{btnText:"喜欢",btnIcon:"qrc:/sources/image/我喜欢的.svg",qml:"qrc:/QML/content/Collect.qml",isActive:true,addAble:false,collectName:"喜欢"},
 			],isActive:true,addAble:false},
 		{headerText:"测试模块",btnData:[
             {btnText:"学习",btnIcon:"qrc:/sources/image/音乐馆.svg",qml:"qrc:/QML/Test.qml",isActive:true},
@@ -36,13 +37,16 @@ Item{
 	}
 	function generateCollectionBtnData(collectionNames) {
 		let btnData = [];
+
+		// 过滤掉"喜欢"收藏夹（已经在单独分组中显示）
 		for (let i = 0; i < collectionNames.length; i++) {
+			if (collectionNames[i] === "喜欢") continue;
 			btnData.push({
-				btnText: collectionNames[i],  
-				btnIcon: "",                 
-				qml: "qrc:/QML/content/Collect.qml", 
+				btnText: collectionNames[i],
+				btnIcon: "",
+				qml: "qrc:/QML/content/Collect.qml",
 				isActive: true,
-				addAble:true
+				addAble: true
 			});
 		}
 		btnData.reverse();
@@ -365,6 +369,8 @@ Item{
 									width:20
 									anchors.verticalCenter:parent.verticalCenter
 									fillMode:Image.PreserveAspectFit
+									mipmap: true
+									smooth: true
 									MultiEffect {
 										source: parent
 										anchors.fill: parent
@@ -401,7 +407,9 @@ Item{
 									}
 									leftBar.current_list_view=modelData.btnText
 									parent.forceActiveFocus()
-                                    if(modelData.addAble)ASMRPlayer.set_collect_file(modelData.btnText)
+                                    // 使用 collectName（如果有）或 btnText 作为收藏夹名称
+                                    var collectName = modelData.collectName || modelData.btnText
+                                    ASMRPlayer.set_collect_file(collectName)
                                     if(leftBar.thisQml!==modelData.qml){
 										leftBar.thisQml=modelData.qml
 									}

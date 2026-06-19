@@ -18,6 +18,8 @@ Rectangle {
 		anchors.fill:parent
 		source: rootHoverButton.image_path
 		visible:false
+		mipmap: true
+		smooth: true
 	}
 	MultiEffect {
 		id: arrowEffect

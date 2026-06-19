@@ -1,10 +1,9 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import com.asmr.player 1.0
 import QtQuick.Shapes
-import "components" as Components
 Item {
     id: root
     focus: true
@@ -32,6 +31,9 @@ Item {
         }
     }
 
+    // 暴露设置弹窗，供 main.qml 在无站点时自动打开
+    function openSettings(){ seting_pop.open() }
+
     PropertyAnimation{
         id:topbar_hide
         property:"opacity"
@@ -47,6 +49,12 @@ Item {
         to:1.0
         duration:200
         easing.type: Easing.OutCubic
+    }
+
+    // 设置弹窗（已提取为独立组件）
+    SettingsPopup {
+        id: seting_pop
+        parentItem: leftbar
     }
     // 原有的RowLayout作为内部布局
     Item{
@@ -104,7 +112,7 @@ Item {
                         font.pointSize:15
                         color:theme.fontColor
                         id: titleLabel
-                        text: qsTr("🌙 ASMR")
+                        text: qsTr("🌙WeAsmr")
                         //topPadding:6
                     }
                 }
@@ -162,7 +170,7 @@ Item {
                     HoverButton{
                         id: searchButton
                         image_path:"qrc:/sources/image/y_icon_line_edit_search.svg"
-                        onClicked: {
+                        onClicked:{
                                 leftbar.thisQml="qrc:/QML/content/SearchShowPage.qml"
                                 //搜索页数默认为1
                                 ASMRPlayer.set_page(1)
@@ -252,11 +260,12 @@ Item {
                     }
                     //设置
                     HoverButton{
-                        visible:false
-                        width:23
-                        height:23
-                        image_path:"qrc:/sources/image/设置.svg"
-                    }
+                          image_path:"qrc:/sources/image/设置.svg"
+                          onClicked:{
+                              //ASMRPlayer.set_webAddr("gay");
+                              seting_pop.open()
+                          }
+                      }
                     HoverButton{
                         image_path:"qrc:/sources/image/竖线.svg"
                         can_hover:false
@@ -353,7 +362,7 @@ Item {
         }
 
     }
-    
+
     Component.onCompleted: {
         history_show()
     }

@@ -1,0 +1,36 @@
+{
+  "sites": [
+    {
+      "id": "selfWeb",
+      "name": "个人网盘",
+      "mainUrl": "http://file.zjpzcmu.cn",
+      "apiType": "alist",
+      "enabled": true,
+      "sortOrder": 0
+    },
+    {
+      "id": "panmidy",
+      "name": "盘趣味",
+      "mainUrl": "https://pan.lm379.cn",
+      "apiType": "alist",
+      "enabled": true,
+      "sortOrder": 1
+    },
+    {
+      "id": "moon",
+      "name": "ASMR Moon",
+      "mainUrl": "https://asmrmoon.com",
+      "apiType": "alist",
+      "enabled": true,
+      "sortOrder": 2
+    },
+    {
+      "id": "gay",
+      "name": "ASMR Gay",
+      "mainUrl": "https://www.asmrgay.com",
+      "apiType": "alist",
+      "enabled": true,
+      "sortOrder": 3
+    }
+  ]
+}
